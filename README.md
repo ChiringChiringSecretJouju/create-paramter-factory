@@ -86,10 +86,10 @@ flowchart TD
   end
 
   %% 상위 ← 하위 (의존 주입/호출 방향)
-  ES <-- ECM
-  ES <-- EUM
-  ECM <-- EUM
-  ECM <-- SPF
+  ECM --> ES
+  EUM --> ES
+  EUM --> ECM
+  SPF --> ECM
 
   %% 팩토리 → 구체 생성자
   SPF -.creates .-> UPC
