@@ -62,3 +62,69 @@ tests/test_exchange_service.py::test_exchange_service_config_by_exchange_and_typ
 - 타입 힌팅(Python 3.12 스타일)과 SRP 준수로 유지보수성 향상
 - 템플릿 누락/오류 시 명확한 예외 메시지로 진단 용이
 - pytest 파라미터라이즈로 거래소×요청타입 케이스 전수 검증
+
+## 클래스 구조 (Mermaid)
+아래는 주요 클래스의 상속/구성 관계입니다.
+
+```mermaid
+classDiagram
+    direction LR
+
+    class SocketParameterCreator {
+      <<abstract>>
+      - exchange: str
+      - region: str
+      - template: dict
+      + create_parameters(symbols: list[str], req_type: str) dict|list
+    }
+
+    class KRWExchangeSocketParameter {
+      + create_parameters(symbols: list[str], req_type: str) list
+      - _get_codes_placeholder() str
+    }
+
+    class UpbitSocketParameter
+    class BithumbSocketParameter
+    class KorbitSocketParameter {
+      + create_parameters(symbols: list[str], req_type: str) list
+    }
+    class CoinoneSocketParameter {
+      + create_parameters(symbols: list[str], req_type: str) list|dict
+    }
+
+    SocketParameterCreator <|-- KRWExchangeSocketParameter
+    KRWExchangeSocketParameter <|-- UpbitSocketParameter
+    KRWExchangeSocketParameter <|-- BithumbSocketParameter
+    SocketParameterCreator <|-- KorbitSocketParameter
+    SocketParameterCreator <|-- CoinoneSocketParameter
+
+    class ExchangeURLManager {
+      + get_region_urls(region, uri_type) -> Result
+      + get_symbol_collect_url(market, location, url_type) -> Result
+    }
+
+    class SocketParameterFactory {
+      + create_socket_parameter(exchange, symbols, req_type) dict|list
+    }
+
+    class ExchangeConfigManager {
+      - _url_manager: ExchangeURLManager
+      - _socket_factory: SocketParameterFactory
+      + get_exchange_config(exchange, symbols, req_type, region) -> Result
+      + get_all_exchange_configs(symbols, req_type, region) -> Result
+    }
+
+    class ExchangeService {
+      - _config_manager: ExchangeConfigManager
+      + get_exchange_config(exchange, symbols, req_type, region) -> Result
+      + get_all_exchange_configs(symbols, req_type, region) -> Result
+    }
+
+    ExchangeConfigManager o-- ExchangeURLManager
+    ExchangeConfigManager o-- SocketParameterFactory
+    ExchangeService o-- ExchangeConfigManager
+    SocketParameterFactory ..> UpbitSocketParameter : creates
+    SocketParameterFactory ..> BithumbSocketParameter : creates
+    SocketParameterFactory ..> KorbitSocketParameter : creates
+    SocketParameterFactory ..> CoinoneSocketParameter : creates
+```
