@@ -43,13 +43,6 @@ class AllMarketURLs(TypedDict):
     korea: KoreaRegionURLs
 
 
-class ExchangeMetadata(TypedDict):
-    region: str
-    url: str
-    exchange_name: str
-    request_type: str
-
-
 class ExchangeSocketConfig(TypedDict):
     """거래소 소켓 구성 정보 타입"""
 
