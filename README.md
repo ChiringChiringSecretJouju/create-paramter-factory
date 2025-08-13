@@ -63,6 +63,41 @@ tests/test_exchange_service.py::test_exchange_service_config_by_exchange_and_typ
 - 템플릿 누락/오류 시 명확한 예외 메시지로 진단 용이
 - pytest 파라미터라이즈로 거래소×요청타입 케이스 전수 검증
 
+## 구성 관계(Top-down)
+목표: URI와 파라미터를 묶어서 뿌려주는 서비스. 상위 → 하위 의존을 단순 화살표로 표현했습니다.
+
+```mermaid
+flowchart TD
+  subgraph Service
+    ES[ExchangeService]
+  end
+
+  subgraph Manager
+    ECM[ExchangeConfigManager]
+  end
+
+  subgraph Infra
+    EUM[ExchangeURLManager]
+    SPF[SocketParameterFactory]
+    UPC[UpbitSocketParameter]
+    BTC[BithumbSocketParameter]
+    KRC[KorbitSocketParameter]
+    CNC[CoinoneSocketParameter]
+  end
+
+  %% 상위 ← 하위 (의존 주입/호출 방향)
+  ES <-- ECM
+  ES <-- EUM
+  ECM <-- EUM
+  ECM <-- SPF
+
+  %% 팩토리 → 구체 생성자
+  SPF -.creates .-> UPC
+  SPF -.creates .-> BTC
+  SPF -.creates .-> KRC
+  SPF -.creates .-> CNC
+```
+
 ## 클래스 구조 (Mermaid)
 아래는 주요 클래스의 상속/구성 관계입니다.
 
