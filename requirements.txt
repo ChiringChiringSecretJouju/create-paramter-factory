@@ -1,0 +1,13 @@
+requests
+numpy
+confluent-kafka
+websockets
+websocket-client
+aiokafka
+kafka-python-ng
+kafka-python
+mmh3
+pyyaml
+aiohttp
+setuptools
+cachetools
