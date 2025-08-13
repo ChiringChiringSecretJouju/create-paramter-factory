@@ -1,13 +1,6 @@
-from setting.config._base_create_paramteter import BaseSocketParameter
+from core.socket_params.base import SocketParameterCreator
 
-# 지역별 모듈 임포트
-# from .asia import (
-#     GateioSocketParameter,
-#     OkxSocketParameter,
-#     BybitSocketParameter,
-# )
-# from .ne import BinanceSocketParameter, KrakenSocketParameter
-from .korea import (
+from core.socket_params.market.korea import (
     UpbitSocketParameter,
     BithumbSocketParameter,
     KorbitSocketParameter,
@@ -30,14 +23,14 @@ class SocketParameterFactory:
     }
 
     @classmethod
-    def get_creator(cls, exchange: str) -> BaseSocketParameter:
+    def get_creator(cls, exchange: str) -> SocketParameterCreator:
         """거래소 이름에 따라 적절한 파라미터 생성기 반환
 
         Args:
             exchange (str): 거래소 이름 (소문자)
 
         Returns:
-            BaseSocketParameter: 해당 거래소의 파라미터 생성기 인스턴스
+            SocketParameterCreator: 해당 거래소의 파라미터 생성기 인스턴스
 
         Raises:
             ValueError: 지원하지 않는 거래소인 경우

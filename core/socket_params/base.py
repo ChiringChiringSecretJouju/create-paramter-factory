@@ -1,21 +1,20 @@
 from pathlib import Path
-from abc import abstractmethod
+from abc import ABC, abstractmethod
 import yaml
 
 
-class BaseSocketParameter:
+class SocketParameterCreator(ABC):
     """거래소 파라미터 생성기의 기본 클래스
 
     공통 기능을 제공하는 추상 기본 클래스
     """
 
     def __init__(self, exchange: str, region: str) -> None:
-        """
+        """초기화
+
         Args:
             exchange (str): 거래소 이름
-            region (str): 지역 이름
-            template_path (Path): 템플릿 파일 경로
-            template (dict): 템플릿
+            region (str): 지역
         """
         self.exchange = exchange
         self.region = region
@@ -24,10 +23,11 @@ class BaseSocketParameter:
 
     def _get_template_path(self) -> Path:
         """템플릿 파일 경로 생성"""
-        base_dir = Path(__file__).parent.parent
+        project_root = Path(__file__).resolve().parents[2]
         return (
-            base_dir
-            / "template"
+            project_root
+            / "setting"
+            / "templates"
             / "socket_templates"
             / self.region
             / f"{self.exchange}.yml"

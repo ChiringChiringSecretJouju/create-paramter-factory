@@ -1,9 +1,10 @@
-from typing import TypedDict, TypeVar, Generic, Any
+from typing import TypedDict, TypeVar, Generic, Any, Callable, Literal
 
 
 T = TypeVar("T")  # 성공 타입
 E = TypeVar("E")  # 오류 타입
 NationalMarketURLs = dict[str, str]
+SocketRequestType = Literal["ticker", "orderbook", "trade"]
 
 
 class Ok(Generic[T]):
@@ -54,3 +55,17 @@ class ExchangeSocketConfig(TypedDict):
 
     url: str
     socket_params: dict[str, Any] | list[dict[str, Any]]
+
+
+def safe_result_call(
+    func: Callable, error_msg: str, *args, **kwargs
+) -> Result[Ok, Err]:
+    """안전하게 함수를 실행하고 Result 형태로 반환하는 공통 유틸 함수"""
+    result = func(*args, **kwargs)
+    # 함수가 이미 Result(Ok/Err)를 반환하는 경우 그대로 전달
+    if isinstance(result, (Ok, Err)):
+        return result
+    # 그 외에는 truthy/falsy 기준으로 Ok/Err 포장
+    if not result:
+        return Err(error_msg)
+    return Ok(result)

@@ -11,3 +11,4 @@ pyyaml
 aiohttp
 setuptools
 cachetools
+pytest

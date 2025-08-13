@@ -1,9 +1,9 @@
 import uuid
 from abc import abstractmethod
-from setting.template._base_create_paramteter import BaseSocketParameter
+from core.socket_params.base import SocketParameterCreator
 
 
-class KRWExchangeSocketParameter(BaseSocketParameter):
+class KRWExchangeSocketParameter(SocketParameterCreator):
     """한국 원화 기반 거래소 공통 파라미터 생성 베이스."""
 
     def create_parameters(self, symbols: list[str], req_type: str) -> list[dict]:
@@ -62,7 +62,7 @@ class BithumbSocketParameter(KRWExchangeSocketParameter):
         return "{bithumb_symbols}"
 
 
-class KorbitSocketParameter(BaseSocketParameter):
+class KorbitSocketParameter(SocketParameterCreator):
     """코빗 거래소 파라미터 생성기."""
 
     def __init__(self):
@@ -89,7 +89,7 @@ class KorbitSocketParameter(BaseSocketParameter):
         return result
 
 
-class CoinoneSocketParameter(BaseSocketParameter):
+class CoinoneSocketParameter(SocketParameterCreator):
     """코인원 거래소 파라미터 생성기."""
 
     def __init__(self):
@@ -102,11 +102,9 @@ class CoinoneSocketParameter(BaseSocketParameter):
 
         template = dict(self.template[req_type])
 
-        return self._create_single_parameter(template, symbols[0], req_type)
+        return self._create_single_parameter(template, symbols[0])
 
-    def _create_single_parameter(
-        self, template: dict, symbol: str, req_type: str
-    ) -> dict:
+    def _create_single_parameter(self, template: dict, symbol: str) -> dict:
         """단일 심볼 요청 파라미터 생성."""
         result = dict(template)
 

@@ -205,5 +205,6 @@ cython_debug/
 marimo/_static/
 marimo/_lsp/
 __marimo__/
-setting/config/_urls.conf
-setting/config/_kafka_config.conf
+setting/config/urls.conf
+setting/config/kafka_config.conf
+.vscode
