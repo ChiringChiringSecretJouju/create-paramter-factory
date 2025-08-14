@@ -58,7 +58,11 @@ async def _run(
 ) -> int:
     # 메시지 빌드
     builder = ConnectMessageBuilder()
-    source = make_exchange_metadata(region=region, exchange=exchange, req_type=req_type)
+    source = make_exchange_metadata(
+        region=region,
+        exchange=exchange,
+        req_type=req_type,
+    )
     msg = await builder.build(
         source=source,
         symbols=symbols,

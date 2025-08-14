@@ -6,19 +6,17 @@ from transport.utils.projection import ProducerConfig
 
 @runtime_checkable
 class KafkaProducerFactory(Protocol):
-    """Factory interface to create Kafka producer instances.
+    """Kafka 프로듀서 인스턴스를 생성하는 팩토리 인터페이스.
 
-    Abstracts producer creation for DI, testing, and observability wrappers.
+    DI, 테스팅, 그리고 관찰성 래퍼를 위한 프로듀서 생성을 추상화합니다.
     """
 
-    def create(
-        self, cfg: ProducerConfig
-    ) -> AIOKafkaProducer:  # pragma: no cover - type contract
-        ...
+    # pragma: no cover - type contract
+    def create(self, cfg: ProducerConfig) -> AIOKafkaProducer: ...
 
 
 class AiokafkaProducerFactory:
-    """Default factory that builds AIOKafkaProducer from ProducerConfig."""
+    """ProducerConfig로부터 AIOKafkaProducer를 생성하는 기본 팩토리."""
 
     def create(self, cfg: ProducerConfig) -> AIOKafkaProducer:
         return AIOKafkaProducer(

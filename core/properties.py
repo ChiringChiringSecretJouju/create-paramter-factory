@@ -3,13 +3,11 @@ from core.types import (
     NationalMarketURLs,
     ExchangeSocketConfig,
     SocketRequestType,
-    Result,
-    Ok,
+    SocketConnectMetaData,
     Err,
 )
 from core.socket_params import SocketParameterFactory
 from core.socket_uri.uri_builder import ExchangeURLManager
-from core.types import safe_result_call
 
 
 class ExchangeConfigManager:
@@ -20,73 +18,107 @@ class ExchangeConfigManager:
     """
 
     def __init__(self) -> None:
+        """
+        거래소 URL 관리자와 소켓 파라미터 팩토리를 초기화합니다.
+        _supported_exchanges: 지원되는 거래소 목록
+        _url_manager: 거래소 URL 관리자
+        _socket_factory: 소켓 파라미터 팩토리
+        """
         self._url_manager = ExchangeURLManager()
         self._socket_factory = SocketParameterFactory
         self._supported_exchanges = list(self._socket_factory._creators.keys())
 
     @property
     def supported_exchanges(self) -> list[str]:
+        """지원되는 거래소 목록을 반환합니다."""
         return self._supported_exchanges
 
-    def get_exchange_config(
-        self,
-        exchange: str,
-        symbols: list[str],
-        req_type: SocketRequestType,
-        region: str = "korea",
-    ) -> Result[Ok[ExchangeSocketConfig], Err[str]]:
+    def get_exchange_config(self, spec: SocketConnectMetaData) -> ExchangeSocketConfig:
+        """특정 거래소의 구성 정보를 반환합니다.
+
+        Args:
+            spec: SocketConnectMetaData
+        Returns:
+            ExchangeSocketConfig: 구성 정보
+        """
         url_result = self._url_manager.get_symbol_collect_url(
-            exchange, region, "socket"
+            market=spec.exchange,
+            location=spec.region,
+            url_type="socket",
         )
         if isinstance(url_result, Err):
-            return Err(f"URL 정보를 가져오는데 실패했습니다: {url_result.error}")
+            raise RuntimeError(
+                f"URL 정보를 가져오는데 실패했습니다: {url_result.error}"
+            )
 
         try:
             socket_params = self._socket_factory.create_socket_parameter(
-                exchange=exchange,
-                symbols=symbols,
-                req_type=req_type,
+                exchange=spec.exchange,
+                symbols=list(spec.symbols),
+                req_type=spec.req_type,
             )
         except ValueError as e:
-            return Err(f"소켓 파라미터 생성에 실패했습니다: {str(e)}")
+            raise RuntimeError(f"소켓 파라미터 생성에 실패했습니다: {str(e)}")
 
-        url_str: str = url_result.ok()
         config: ExchangeSocketConfig = {
-            "url": url_str,
+            "url": url_result,
             "socket_params": socket_params,
         }
-        return Ok(config)
+        return config
 
     def get_all_exchange_configs(
         self,
-        symbols: list[str],
-        req_type: SocketRequestType,
-        region: str = "korea",
-    ) -> Result[Ok[dict[str, ExchangeSocketConfig]], Err[str]]:
-        urls_result = self._url_manager.get_region_urls(region, "socket")
-        if isinstance(urls_result, Err):
-            return Err(f"지역 URL 정보를 가져오는데 실패했습니다: {urls_result.error}")
+        spec: SocketConnectMetaData,
+    ) -> dict[str, ExchangeSocketConfig]:
+        """모든 거래소의 구성 정보를 반환합니다.
 
-        region_urls = urls_result.ok()
+        Args:
+            spec: SocketConnectMetaData
+        Returns:
+            dict[str, ExchangeSocketConfig]: 구성 정보
+        """
+        urls_result: dict[str, str] = self._url_manager.get_region_urls(
+            spec.region, "socket"
+        )
+        if not urls_result:
+            raise RuntimeError(
+                f"지역 URL 정보를 가져오는데 실패했습니다: {spec.region}"
+            )
+
         configs: dict[str, ExchangeSocketConfig] = {}
         for exchange in self._supported_exchanges:
-            if exchange not in region_urls:
+            if exchange not in urls_result:
                 continue
             try:
                 socket_params = self._socket_factory.create_socket_parameter(
                     exchange=exchange,
-                    symbols=symbols,
-                    req_type=req_type,
+                    symbols=list(spec.symbols),
+                    req_type=spec.req_type,
                 )
                 configs[exchange] = {
-                    "url": region_urls[exchange],
+                    "url": urls_result[exchange],
                     "socket_params": socket_params,
                 }
             except ValueError:
                 continue
         if not configs:
-            return Err(f"지원되는 거래소 구성 정보가 없습니다: {region} 지역")
-        return Ok(configs)
+            raise RuntimeError(
+                f"지원되는 거래소 구성 정보가 없습니다: {spec.region} 지역"
+            )
+        return configs
+
+    # ------------------------ Spec wrappers ------------------ #
+    def get_exchange_config_from(
+        self, spec: SocketConnectMetaData
+    ) -> ExchangeSocketConfig:
+        """SocketConnectMetaData 기반 구성 정보를 반환합니다."""
+        return self.get_exchange_config(spec)
+
+    def get_all_exchange_configs_from(
+        self, spec: SocketConnectMetaData
+    ) -> dict[str, ExchangeSocketConfig]:
+        """SocketConnectMetaData 기반 모든 거래소 구성 정보를 반환합니다."""
+        return self.get_all_exchange_configs(spec)
 
 
 class ExchangeService:
@@ -97,31 +129,58 @@ class ExchangeService:
     """
 
     def __init__(self) -> None:
+        """
+        거래소 URL 관리자와 구성 관리자를 초기화합니다.
+        _url_manager: 거래소 URL 관리자
+        _config_manager: 구성 관리자
+        """
         self._url_manager = ExchangeURLManager()
         self._config_manager = ExchangeConfigManager()
 
     # ------------------------ URL helpers --------------------- #
-    def get_symbol_collect_url(
-        self, market: str, location: str, url_type: str
-    ) -> Result[Ok[str], Err[str]]:
-        err = f"거래소 '{market}', 지역 '{location}', 유형 '{url_type}'의 URL을 찾을 수 없습니다."
-        return safe_result_call(
-            self._url_manager.get_symbol_collect_url, err, market, location, url_type
-        )
+    def get_symbol_collect_url(self, market: str, location: str, url_type: str) -> str:
+        """특정 거래소와 지역에 대한 URL을 반환합니다.
 
-    def get_all_region_urls(
-        self, region: str, url_type: str
-    ) -> Result[Ok[NationalMarketURLs], Err[str]]:
-        err = f"지역 '{region}'의 URL을 찾을 수 없습니다."
-        return safe_result_call(
-            self._url_manager.get_region_urls, err, region, url_type.upper()
-        )
+        Args:
+            market: 거래소
+            location: 지역
+            url_type: URL 유형
+        Returns:
+            str: URL
+        """
+        res = self._url_manager.get_symbol_collect_url(market, location, url_type)
+        if not res:
+            raise RuntimeError(
+                f"거래소 '{market}', 지역 '{location}', 유형 '{url_type}'의 URL을 찾을 수 없습니다."
+            )
+        return res
 
-    def get_all_urls(self, url_type: str) -> Result[Ok[AllMarketURLs], Err[str]]:
-        err = f"유형 '{url_type}'의 URL을 찾을 수 없습니다."
-        return safe_result_call(
-            self._url_manager.get_exchange_urls, err, url_type.upper()
-        )
+    def get_all_region_urls(self, region: str, url_type: str) -> NationalMarketURLs:
+        """지역에 대한 URL을 반환합니다.
+
+        Args:
+            region: 지역
+            url_type: URL 유형
+        Returns:
+            NationalMarketURLs: URL
+        """
+        res = self._url_manager.get_region_urls(region, url_type.upper())
+        if not res:
+            raise RuntimeError(f"지역 '{region}'의 URL을 찾을 수 없습니다.")
+        return res
+
+    def get_all_urls(self, url_type: str) -> AllMarketURLs:
+        """모든 거래소의 URL을 반환합니다.
+
+        Args:
+            url_type: URL 유형
+        Returns:
+            AllMarketURLs: URL
+        """
+        res = self._url_manager.get_exchange_urls(url_type.upper())
+        if not res:
+            raise RuntimeError(f"유형 '{url_type}'의 URL을 찾을 수 없습니다.")
+        return res
 
     # ------------------------ Config helpers ------------------ #
     def get_exchange_config(
@@ -130,20 +189,53 @@ class ExchangeService:
         symbols: list[str],
         req_type: SocketRequestType,
         region: str = "korea",
-    ) -> Result[Ok[ExchangeSocketConfig], Err[str]]:
+    ) -> ExchangeSocketConfig:
+        """특정 거래소의 구성 정보를 반환합니다.
+
+        Args:
+            exchange: 거래소
+            symbols: 심볼 목록
+            req_type: 요청 타입
+            region: 지역
+        Returns:
+            ExchangeSocketConfig: 구성 정보
+        """
         if exchange.lower() == "all":
-            return self.get_all_exchange_configs(symbols, req_type, region)
-        return self._config_manager.get_exchange_config(
-            exchange, symbols, req_type, region
+            raise ValueError(
+                "'all'은 단일 구성 조회에 사용할 수 없습니다. get_all_exchange_configs를 사용하세요."
+            )
+        spec = SocketConnectMetaData(
+            region=region,
+            exchange=exchange,
+            req_type=req_type,
+            symbols=symbols,
         )
+        return self._config_manager.get_exchange_config_from(spec)
 
     def get_all_exchange_configs(
-        self,
-        symbols: list[str],
-        req_type: SocketRequestType,
-        region: str = "korea",
-    ) -> Result[Ok[dict[str, ExchangeSocketConfig]], Err[str]]:
-        return self._config_manager.get_all_exchange_configs(symbols, req_type, region)
+        self, spec: SocketConnectMetaData
+    ) -> dict[str, ExchangeSocketConfig]:
+        """모든 거래소의 구성 정보를 반환합니다.
+
+        Args:
+            spec: SocketConnectMetaData
+        Returns:
+            dict[str, ExchangeSocketConfig]: 구성 정보
+        """
+        return self._config_manager.get_all_exchange_configs(spec)
+
+    # ------------------------ Spec helpers ------------------- #
+    def get_exchange_config_from(
+        self, spec: SocketConnectMetaData
+    ) -> ExchangeSocketConfig:
+        """SocketConnectMetaData 기반 구성 정보를 반환합니다."""
+        return self._config_manager.get_exchange_config_from(spec)
+
+    def get_all_exchange_configs_from(
+        self, spec: SocketConnectMetaData
+    ) -> dict[str, ExchangeSocketConfig]:
+        """SocketConnectMetaData 기반 모든 거래소 구성 정보를 반환합니다."""
+        return self._config_manager.get_all_exchange_configs_from(spec)
 
 
 # 모듈 전역에서 재사용할 단일 서비스 인스턴스

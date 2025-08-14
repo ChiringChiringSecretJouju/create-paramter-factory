@@ -5,9 +5,10 @@ from typing import Sequence
 from aiokafka import AIOKafkaProducer
 
 from common.serde import to_bytes
-from core.properties import ExchangeService, SocketRequestType
-from core.types import Err
+from core.properties import ExchangeService
+from core.types import ExchangeSocketConfig
 from transport.types.message_types import ConnectMessageTD, ExchangeMetadata
+from transport.types.specs import SocketConnectMetaData as SCMeta
 from transport.types.headers import HeaderKey, KafkaHeader
 from transport.utils.time import now_ms_kst
 from transport.utils.projection import (
@@ -31,7 +32,6 @@ class ConnectMessageBuilder:
 
     async def build(
         self,
-        *,
         source: ExchangeMetadata,
         symbols: Sequence[str],
         expiry_ms: int | None = None,
@@ -50,44 +50,56 @@ class ConnectMessageBuilder:
             RuntimeError: 구성 생성에 실패한 경우
         """
         # URL 및 소켓 파라미터 구성 (동기)
-        # region: 지역, exchange: 거래소 req_type_str: request 타입
         region = source["region"]
         exchange = source["exchange"]
         req_type_str = source["request_type"]
-
-        # 서비스는 문자열 타입의 요청 타입도 처리 가능해야 함
-        res = self.svc.get_exchange_config(
+        config: ExchangeSocketConfig = self.svc.get_exchange_config(
             exchange, list(symbols), req_type_str, region
         )
-
-        if isinstance(res, Err):
-            raise RuntimeError(f"구성 생성 실패: {res.error}")
-
-        # Projection 필드 비동기 로드
         projection: list[str] = await load_projection_async(
             exchange, req_type_str, self.template_dir
         )
-
         now: int = now_ms_kst()
         msg = ConnectMessageTD(
             event_kind="connect",
             schema_version=SCHEMA_VERSION,
             symbols=list(symbols),
             source=source,
-            connection=res.ok(),
+            connection=config,
             projection=projection,
             ts_issue=now,
             ts_ingest=now,
         )
-
         if expiry_ms is not None:
             msg.expiry_ms = int(expiry_ms)
-
         return msg
+
+    async def build_from_spec(self, spec: SCMeta) -> ConnectMessageTD:
+        """ConnectSpec를 받아 메시지를 생성합니다.
+
+        Args:
+            spec: ConnectSpec
+        Returns:
+            ConnectMessageTD: 생성된 Connect 메시지
+        Raises:
+            RuntimeError: 구성 생성에 실패한 경우
+        """
+        source: ExchangeMetadata = make_exchange_metadata(
+            region=spec.region, exchange=spec.exchange, req_type=spec.req_type
+        )
+        return await self.build(
+            source=source,
+            symbols=spec.symbols,
+            expiry_ms=spec.expiry_ms,
+        )
 
 
 class AioKafkaConnectProducer:
     """aiokafka 기반 Connect 메시지 프로듀서
+
+    Args:
+        cfg: ProducerConfig
+        producer_factory: KafkaProducerFactory
 
     사용 예:
         prod = AioKafkaConnectProducer(ProducerConfig())
@@ -99,7 +111,6 @@ class AioKafkaConnectProducer:
     def __init__(
         self,
         cfg: ProducerConfig | None = None,
-        *,
         producer_factory: KafkaProducerFactory | None = None,
     ) -> None:
         self.cfg = cfg or load_kafka_config()
@@ -121,60 +132,33 @@ class AioKafkaConnectProducer:
             await self._producer.stop()
             self._producer = None
 
-    async def produce_connect(
-        self,
-        *,
-        region: str,
-        exchange: str,
-        req_type: SocketRequestType,
-        symbols: Sequence[str],
-        expiry_ms: int | None = None,
-    ) -> None:
-        """
-        Connect 메시지를 Kafka로 전송합니다.
+    async def produce_connect(self, spec: SCMeta) -> None:
+        """ConnectSpec 기반으로 Connect 메시지를 전송합니다.
+
         Args:
-            region: 지역
-            exchange: 거래소
-            req_type: 요청 타입
-            symbols: 심볼 목록
-            expiry_ms: 메시지 만료 시간(밀리초)
+            spec: ConnectSpec
+        Raises:
+            RuntimeError: Producer가 시작되지 않은 경우
         """
         if self._producer is None:
             raise RuntimeError("Producer is not started. Call start() first.")
-        # 메시지 구성 및 전송을 단계별로 위임하여 책임 축소
-        source: ExchangeMetadata = make_exchange_metadata(
-            region=region, exchange=exchange, req_type=req_type
-        )
-        msg: ConnectMessageTD = await self.build_connect_message(
-            source=source, symbols=symbols, expiry_ms=expiry_ms
-        )
-        await self.send_connect(source=source, msg=msg)
+        msg: ConnectMessageTD = await self._builder.build_from_spec(spec)
+        await self.send_connect(msg=msg)
 
-    async def build_connect_message(
-        self,
-        *,
-        source: ExchangeMetadata,
-        symbols: Sequence[str],
-        expiry_ms: int | None = None,
-    ) -> ConnectMessageTD:
-        """빌더 위임: Connect 메시지를 생성합니다."""
-        return await self._builder.build(
-            source=source, symbols=symbols, expiry_ms=expiry_ms
-        )
-
-    def _make_key(self, *, region: str, exchange: str, req_type: str) -> bytes:
+    def _make_key(self, source: ExchangeMetadata) -> bytes:
         """
         Key: region|exchange|first_symbol
         Args:
-            region: 지역
-            exchange: 거래소
-            symbols: 심볼 목록
+            source: ExchangeMetadata(region="korea", exchange="bithumb", request_type="ticker")
         Returns:
             bytes: 키
         """
+        region: str = source["region"]
+        exchange: str = source["exchange"]
+        req_type: str = source["request_type"]
         return f"{region}|{exchange}|{req_type}".encode("utf-8")
 
-    def _make_headers(self, *, source: ExchangeMetadata) -> KafkaHeader:
+    def _make_headers(self, source: ExchangeMetadata) -> KafkaHeader:
         return [
             (HeaderKey.REGION.value, source["region"].encode("utf-8")),
             (HeaderKey.EXCHANGE.value, source["exchange"].encode("utf-8")),
@@ -184,27 +168,22 @@ class AioKafkaConnectProducer:
             (HeaderKey.CONTENT_TYPE.value, b"application/json"),
         ]
 
-    async def send_connect(
-        self, *, source: ExchangeMetadata, msg: ConnectMessageTD
-    ) -> None:
-        """
-        Connect 메시지를 Kafka로 전송합니다.
+    async def send_connect(self, msg: ConnectMessageTD) -> None:
+        """Kafka로 메시지를 전송합니다.
+
         Args:
-            source: ExchangeMetadata
             msg: ConnectMessageTD
+
+        Raises:
+            RuntimeError: Producer가 시작되지 않은 경우
         """
         if self._producer is None:
             raise RuntimeError("Producer is not started. Call start() first.")
 
-        key = self._make_key(
-            region=source["region"],
-            exchange=source["exchange"],
-            req_type=source["request_type"],
-        )
-        headers = self._make_headers(source=source)
+        source: ExchangeMetadata = msg["source"]
         await self._producer.send_and_wait(
             topic=self.cfg.topic,
-            key=key,
+            key=self._make_key(source),
             value=to_bytes(msg),
-            headers=headers,
+            headers=self._make_headers(source),
         )

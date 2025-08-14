@@ -1,4 +1,5 @@
-from typing import TypedDict, TypeVar, Generic, Any, Callable, Literal
+from typing import TypedDict, TypeVar, Generic, Any, Callable, Literal, Sequence
+from dataclasses import dataclass
 
 
 T = TypeVar("T")  # 성공 타입
@@ -48,6 +49,24 @@ class ExchangeSocketConfig(TypedDict):
 
     url: str
     socket_params: dict[str, Any] | list[dict[str, Any]]
+
+
+@dataclass(frozen=True, slots=True)
+class SocketConnectMetaData:
+    """Connect 이벤트 생성을 위한 입력 메타데이터.
+
+    - region: 지역 (예: "korea")
+    - exchange: 거래소 (예: "upbit")
+    - req_type: 요청 타입 (예: SocketRequestType.TICKER)
+    - symbols: 심볼 목록 (예: ["KRW-BTC", "KRW-ETH"]) 또는 심볼 코드 축약형(호출부 규칙 따름)
+    - expiry_ms: 선택적 만료 시간(ms)
+    """
+
+    region: str
+    exchange: str
+    req_type: SocketRequestType
+    symbols: Sequence[str]
+    expiry_ms: int | None = None
 
 
 def safe_result_call(

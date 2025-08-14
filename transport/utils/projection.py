@@ -110,6 +110,13 @@ def make_exchange_metadata(
     """동기 메타데이터 생성 헬퍼.
 
     ConnectMessageTD의 `source` 필드 구성을 캡슐화한다.
+
+    Args:
+        region: 지역
+        exchange: 거래소
+        req_type: 요청 타입
+    Returns:
+        ExchangeMetadata: 메타데이터
     """
     return ExchangeMetadata(
         region=region,
