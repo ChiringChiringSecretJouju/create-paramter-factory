@@ -2,6 +2,17 @@
 
 웹소켓 수집을 위한 URL/파라미터 생성을 표준화한 모듈입니다. 거래소/요청타입별 템플릿을 코드와 분리해 유지보수성과 확장성을 높였습니다.
 
+## 변경 사항 요약 (2025-08)
+- 예외 기반 API로 전환: `Result/Ok/Err` 반환 제거. 정상 값 반환, 실패 시 예외 발생.
+- 스펙 데이터 클래스명 변경: `SocketConnetMetaData` → `SocketConnectMetaData`.
+- 스펙 위치: `core/types/_core_type.py`가 단일 소스. `transport/types/specs.py`는 재내보내기만 수행.
+- API 시그니처 변경:
+  - `ExchangeConfigManager.get_exchange_config(spec)` → `ExchangeSocketConfig`
+  - `ExchangeConfigManager.get_all_exchange_configs(spec)` → `dict[str, ExchangeSocketConfig]`
+  - `ExchangeService.get_exchange_config(exchange, symbols, req_type, region)` → `ExchangeSocketConfig`
+  - `ExchangeService.get_all_exchange_configs(spec)` → `dict[str, ExchangeSocketConfig]`
+  - URL 매니저: `ExchangeURLManager.get_region_urls(...) -> dict[str, str]`, `get_symbol_collect_url(...) -> str`
+
 ## 1) 목적(What)
 - 거래소별 WebSocket 연결 설정을 일관된 인터페이스로 제공
 - URI(웹소켓 URL) + 구독 파라미터를 하나의 구성으로 반환
@@ -27,10 +38,35 @@
   - 내부 키: `ticker`, `orderbook`, `trade` 섹션을 한 파일에 정의
 
 - __사용 예시__
-  - 단일 거래소 구성 조회:
-    - `ExchangeService().get_exchange_config(exchange, symbols, req_type, region="korea")`
-  - 전체 거래소 구성 조회:
-    - `ExchangeService().get_all_exchange_configs(symbols, req_type, region="korea")`
+  - 단일 거래소 구성 조회 (예외 기반):
+    ```python
+    from core.properties import ExchangeService
+
+    svc = ExchangeService()
+    cfg = svc.get_exchange_config(
+        exchange="upbit",
+        symbols=["KRW-BTC", "KRW-ETH"],
+        req_type="ticker",
+        region="korea",
+    )
+    # cfg: ExchangeSocketConfig(dict)
+    ```
+
+  - 전체 거래소 구성 조회(스펙 기반):
+    ```python
+    from core.properties import ExchangeService
+    from core.types import SocketConnectMetaData as SCMeta
+
+    svc = ExchangeService()
+    spec = SCMeta(
+        region="korea",
+        exchange="all",  # 전체 조회 시 권장: get_all_* API 사용
+        req_type="ticker",
+        symbols=["KRW-BTC", "KRW-ETH"],
+    )
+    all_cfgs = svc.get_all_exchange_configs(spec)
+    # all_cfgs: dict[str, ExchangeSocketConfig]
+    ```
 
 ## 4) 테스트 결과(Test)
 다음은 최신 테스트 세션 요약입니다. 자세한 항목은 `tests/test_exchange_service.py` 참고.
@@ -134,8 +170,8 @@ classDiagram
     SocketParameterCreator <|-- CoinoneSocketParameter
 
     class ExchangeURLManager {
-      + get_region_urls(region, uri_type) -> Result
-      + get_symbol_collect_url(market, location, url_type) -> Result
+      + get_region_urls(region, uri_type) -> dict[str, str]
+      + get_symbol_collect_url(market, location, url_type) -> str
     }
 
     class SocketParameterFactory {
@@ -145,14 +181,16 @@ classDiagram
     class ExchangeConfigManager {
       - _url_manager: ExchangeURLManager
       - _socket_factory: SocketParameterFactory
-      + get_exchange_config(exchange, symbols, req_type, region) -> Result
-      + get_all_exchange_configs(symbols, req_type, region) -> Result
+      + get_exchange_config(spec) -> ExchangeSocketConfig
+      + get_all_exchange_configs(spec) -> dict[str, ExchangeSocketConfig]
     }
 
     class ExchangeService {
       - _config_manager: ExchangeConfigManager
-      + get_exchange_config(exchange, symbols, req_type, region) -> Result
-      + get_all_exchange_configs(symbols, req_type, region) -> Result
+      + get_exchange_config(exchange, symbols, req_type, region) -> ExchangeSocketConfig
+      + get_all_exchange_configs(spec) -> dict[str, ExchangeSocketConfig]
+      + get_exchange_config_from(spec) -> ExchangeSocketConfig
+      + get_all_exchange_configs_from(spec) -> dict[str, ExchangeSocketConfig]
     }
 
     ExchangeConfigManager o-- ExchangeURLManager

@@ -5,6 +5,7 @@ import asyncio
 import json
 from typing import Sequence
 
+from transport.types.specs import SocketConnectMetaData as SCMeta
 from core.properties import SocketRequestType
 from transport.producer import (
     AioKafkaConnectProducer,
@@ -69,7 +70,7 @@ async def _run(
         expiry_ms=expiry_ms,
     )
     # 화면 출력 (검증용)
-    print(json.dumps(msg, ensure_ascii=False, separators=(",", ":")))
+    print(json.dumps(msg, ensure_ascii=False, indent=4))
 
     # 카프카 발행 옵션
     if produce:
@@ -77,11 +78,13 @@ async def _run(
         await producer.start()
         try:
             await producer.produce_connect(
-                region=region,
-                exchange=exchange,
-                req_type=req_type,
-                symbols=symbols,
-                expiry_ms=expiry_ms,
+                spec=SCMeta(
+                    region=region,
+                    exchange=exchange,
+                    req_type=req_type,
+                    symbols=symbols,
+                    expiry_ms=expiry_ms,
+                )
             )
         finally:
             await producer.stop()

@@ -7,7 +7,12 @@ from aiokafka import AIOKafkaProducer
 from common.serde import to_bytes
 from core.properties import ExchangeService
 from core.types import ExchangeSocketConfig
-from transport.types.message_types import ConnectMessageTD, ExchangeMetadata
+from transport.types.message_types import (
+    ConnectMessageTD,
+    ExchangeMetadata,
+    default_routing,
+    DEFAULT_RELIABILITY,
+)
 from transport.types.specs import SocketConnectMetaData as SCMeta
 from transport.types.headers import HeaderKey, KafkaHeader
 from transport.utils.time import now_ms_kst
@@ -21,6 +26,7 @@ from transport.di.producer_factory import KafkaProducerFactory, AiokafkaProducer
 
 
 SCHEMA_VERSION = "1.0.0"
+DEFAULT_TTL_MS = 30_000
 
 
 class ConnectMessageBuilder:
@@ -61,10 +67,14 @@ class ConnectMessageBuilder:
         )
         now: int = now_ms_kst()
         msg = ConnectMessageTD(
-            event_kind="connect",
+            type="command",
+            action="connect_and_subscribe",
+            ttl_ms=DEFAULT_TTL_MS,
+            routing=default_routing(region, exchange, req_type_str),
+            reliability=DEFAULT_RELIABILITY,
             schema_version=SCHEMA_VERSION,
             symbols=list(symbols),
-            source=source,
+            target=source,
             connection=config,
             projection=projection,
             ts_issue=now,
@@ -180,7 +190,7 @@ class AioKafkaConnectProducer:
         if self._producer is None:
             raise RuntimeError("Producer is not started. Call start() first.")
 
-        source: ExchangeMetadata = msg["source"]
+        source: ExchangeMetadata = msg["target"]
         await self._producer.send_and_wait(
             topic=self.cfg.topic,
             key=self._make_key(source),
