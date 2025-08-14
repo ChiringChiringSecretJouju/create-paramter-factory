@@ -50,7 +50,7 @@ class ExchangeConfigManager:
         except ValueError as e:
             return Err(f"소켓 파라미터 생성에 실패했습니다: {str(e)}")
 
-        url_str: str = url_result.value()
+        url_str: str = url_result.ok()
         config: ExchangeSocketConfig = {
             "url": url_str,
             "socket_params": socket_params,
@@ -67,7 +67,7 @@ class ExchangeConfigManager:
         if isinstance(urls_result, Err):
             return Err(f"지역 URL 정보를 가져오는데 실패했습니다: {urls_result.error}")
 
-        region_urls = urls_result.value()
+        region_urls = urls_result.ok()
         configs: dict[str, ExchangeSocketConfig] = {}
         for exchange in self._supported_exchanges:
             if exchange not in region_urls:

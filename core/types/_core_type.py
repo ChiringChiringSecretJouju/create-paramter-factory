@@ -9,18 +9,18 @@ SocketRequestType = Literal["ticker", "orderbook", "trade"]
 
 class Ok(Generic[T]):
     def __init__(self, ok: T) -> None:
-        self.ok = ok
+        self.correct = ok
 
-    def value(self) -> T:
+    def ok(self) -> T:
         """값을 반환합니다."""
-        return self.ok
+        return self.correct
 
 
 class Err(Generic[E]):
     def __init__(self, error: E) -> None:
         self.error = error
 
-    def value(self) -> E:
+    def err(self) -> E:
         """오류 값을 반환합니다."""
         return self.error
 

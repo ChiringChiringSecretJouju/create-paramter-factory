@@ -4,9 +4,12 @@ from __future__ import annotations
 import asyncio
 from pathlib import Path
 
+import logging
 import yaml
 import configparser
 from dataclasses import dataclass
+from transport.types.message_types import ExchangeMetadata
+from core.properties import SocketRequestType
 
 
 @dataclass(slots=True)
@@ -79,15 +82,37 @@ async def load_projection_async(
 def load_kafka_config() -> ProducerConfig:
     """레포 루트 기준 setting/config/kafka_config.conf에서 Kafka 설정 로드
 
-    레거시 경로(setting/_kafka_config.conf)도 폴백 지원
+    레거시 경로 폴백 제거, 단일 경로만 사용
     """
-    root = Path(__file__).parents[1]
+    root = Path(__file__).parent.parent.parent
     conf_path = root / "setting" / "config" / "kafka_config.conf"
+    logger = logging.getLogger(__name__)
     if conf_path.exists():
-        return ProducerConfig.from_file(conf_path)
-
-    # Fallback to legacy path to be tolerant
-    legacy = root / "setting" / "_kafka_config.conf"
-    if legacy.exists():
-        return ProducerConfig.from_file(legacy)
+        try:
+            return ProducerConfig.from_file(conf_path)
+        except Exception as e:  # 파일 손상/파싱 오류 등 방어
+            logger.warning(
+                "Kafka 설정 파일을 읽는 데 실패했습니다(%s). 기본값을 사용합니다.", e
+            )
+    logger.warning(
+        "Kafka 설정 파일을 찾지 못했습니다: %s. 기본값을 사용합니다.",
+        conf_path,
+    )
     return ProducerConfig()
+
+
+def make_exchange_metadata(
+    *,
+    region: str,
+    exchange: str,
+    req_type: SocketRequestType,
+) -> ExchangeMetadata:
+    """동기 메타데이터 생성 헬퍼.
+
+    ConnectMessageTD의 `source` 필드 구성을 캡슐화한다.
+    """
+    return ExchangeMetadata(
+        region=region,
+        exchange=exchange,
+        request_type=str(req_type),
+    )

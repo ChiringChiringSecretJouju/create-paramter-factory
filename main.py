@@ -10,6 +10,7 @@ from transport.producer import (
     AioKafkaConnectProducer,
     ConnectMessageBuilder,
 )
+from transport.utils.projection import make_exchange_metadata
 
 
 def _parse_args() -> argparse.Namespace:
@@ -57,21 +58,18 @@ async def _run(
 ) -> int:
     # 메시지 빌드
     builder = ConnectMessageBuilder()
+    source = make_exchange_metadata(region=region, exchange=exchange, req_type=req_type)
     msg = await builder.build(
-        region=region,
-        exchange=exchange,
-        req_type=req_type,
+        source=source,
         symbols=symbols,
         expiry_ms=expiry_ms,
     )
-
     # 화면 출력 (검증용)
     print(json.dumps(msg, ensure_ascii=False, separators=(",", ":")))
 
     # 카프카 발행 옵션
     if produce:
         producer = AioKafkaConnectProducer()
-        print(producer.cfg.bootstrap_servers)
         await producer.start()
         try:
             await producer.produce_connect(
