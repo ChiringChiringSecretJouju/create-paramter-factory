@@ -7,6 +7,7 @@ from typing import Sequence
 
 from transport.types.specs import SocketConnectMetaData as SCMeta
 from core.properties import SocketRequestType
+from transport.types.message_types import ExchangeMetadata, ConnectMessageTD
 from transport.producer import (
     AioKafkaConnectProducer,
     ConnectMessageBuilder,
@@ -59,12 +60,12 @@ async def _run(
 ) -> int:
     # 메시지 빌드
     builder = ConnectMessageBuilder()
-    source = make_exchange_metadata(
+    source: ExchangeMetadata = make_exchange_metadata(
         region=region,
         exchange=exchange,
         req_type=req_type,
     )
-    msg = await builder.build(
+    msg: ConnectMessageTD = await builder.build(
         source=source,
         symbols=symbols,
         expiry_ms=expiry_ms,
