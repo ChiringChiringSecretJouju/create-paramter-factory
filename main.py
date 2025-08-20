@@ -1,112 +1,117 @@
 from __future__ import annotations
 
-import argparse
 import asyncio
 import json
-from typing import Sequence
-
-from transport.types.specs import SocketConnectMetaData as SCMeta
-from core.properties import SocketRequestType
-from transport.types.message_types import ExchangeMetadata, ConnectMessageTD
+from transport.types.message_types import ConnectMessageTD
 from transport.producer import (
     AioKafkaConnectProducer,
     ConnectMessageBuilder,
 )
-from transport.utils.projection import make_exchange_metadata
+from transport.consumer import AioKafkaRequestConsumer, RequestEnvelope
 
 
-def _parse_args() -> argparse.Namespace:
-    p = argparse.ArgumentParser(
-        description="Build and (optionally) produce a connect+projection message"
-    )
-    p.add_argument("--exchange", "-e", default="bithumb", help="exchange name")
-    p.add_argument(
-        "--type",
-        "-t",
-        dest="req_type",
-        choices=["ticker", "orderbook", "trade"],
-        default="ticker",
-        help="socket request type",
-    )
-    p.add_argument(
-        "--symbols",
-        "-s",
-        default="BTC",
-        help="comma-separated symbols (e.g., BTC,ETH)",
-    )
-    p.add_argument("--region", "-r", default="korea", help="region (default: korea)")
-    p.add_argument(
-        "--expiry-ms",
-        type=int,
-        default=None,
-        help="optional expiry in milliseconds",
-    )
-    p.add_argument(
-        "--produce",
-        action="store_true",
-        help="if set, send the message to Kafka using aiokafka",
-    )
-    return p.parse_args()
+class ConnectForwarder:
+    """Kafka 컨슈머 → Connect 메시지 빌더 → Kafka 프로듀서 파이프라인.
 
+    역할을 다음 메서드로 분리합니다.
+    - _extract_request_fields: 페이로드에서 region/exchange/req_type/symbols 추출
+    - _build_connect_message: ConnectMessageTD 생성
+    - run: 레코드를 소비하고 생성된 메시지를 전달
 
-async def _run(
-    *,
-    exchange: str,
-    req_type: SocketRequestType,
-    symbols: Sequence[str],
-    region: str,
-    expiry_ms: int | None,
-    produce: bool,
-) -> int:
-    # 메시지 빌드
-    builder = ConnectMessageBuilder()
-    source: ExchangeMetadata = make_exchange_metadata(
-        region=region,
-        exchange=exchange,
-        req_type=req_type,
-    )
-    msg: ConnectMessageTD = await builder.build(
-        source=source,
-        symbols=symbols,
-        expiry_ms=expiry_ms,
-    )
-    # 화면 출력 (검증용)
-    print(json.dumps(msg, ensure_ascii=False, indent=4))
+    """
 
-    # 카프카 발행 옵션
-    if produce:
-        producer = AioKafkaConnectProducer()
-        await producer.start()
+    def __init__(self) -> None:
+        self.consumer = AioKafkaRequestConsumer(
+            topic="market_connect_request_v1",
+            group_id="create-parameter-factory-consumer",
+        )
+        self.builder = ConnectMessageBuilder()
+        self.producer = AioKafkaConnectProducer()
+
+    @staticmethod
+    def _extract_request_fields(payload: dict) -> tuple[str, str, str, list[str]]:
+        """페이로드에서 필드(region, exchange, req_type, symbols)를 추출합니다.
+
+        Args:
+            payload: 수신한 원시 JSON 디코드 결과(dict)
+
+        Returns:
+            tuple[str, str, str, list[str]]: (region, exchange, req_type, symbols)
+        """
+        region: str = payload.get("target", {}).get("region", "")
+        exchange: str = payload.get("target", {}).get("exchange", "")
+        req_type: str = payload.get("target", {}).get("request_type", "")
+        symbols: list[str] = (
+            payload.get("connection", {}).get("socket_params", {}).get("symbols", [])
+        )
+        return region, exchange, req_type, symbols
+
+    async def _build_connect_message(
+        self, payload: dict, req: RequestEnvelope
+    ) -> ConnectMessageTD:
+        """추출된 필드로 ConnectMessageTD를 생성합니다.
+
+        Args:
+            payload: 수신 페이로드(dict)
+            req: 파싱된 요청 엔벨로프(RequestEnvelope)
+
+        Returns:
+            ConnectMessageTD: 생성된 Connect 메시지
+        """
+        region, exchange, req_type, symbols = self._extract_request_fields(payload)
+        msg: ConnectMessageTD = await self.builder.build(
+            source={
+                "region": region,
+                "exchange": exchange,
+                "request_type": req_type,
+            },
+            symbols=symbols,
+            expiry_ms=None,
+        )
+        if req.correlation_id:
+            msg["ticket_id"] = req.correlation_id
+        return msg
+
+    async def handle_record(self, raw_value: bytes) -> None:
+        """단일 Kafka 레코드를 처리하고 Connect 메시지를 전송합니다.
+
+        Args:
+            raw_value: Kafka에서 수신한 바이트 값
+
+        Returns:
+            None
+        """
+        payload = json.loads(raw_value.decode("utf-8"))
+        req = RequestEnvelope.parse(payload)
+        msg = await self._build_connect_message(payload, req)
+        await self.producer.send_connect(msg)
+
+    async def run(self) -> None:
+        """컨슈머를 실행하여 레코드를 소비하고 메시지를 전달합니다.
+
+        Args:
+            None
+
+        Returns:
+            None
+        """
+        await self.consumer.start()
+        await self.producer.start()
         try:
-            await producer.produce_connect(
-                spec=SCMeta(
-                    region=region,
-                    exchange=exchange,
-                    req_type=req_type,
-                    symbols=symbols,
-                    expiry_ms=expiry_ms,
-                )
-            )
+            async for record in self.consumer:
+                try:
+                    await self.handle_record(record.value)
+                except Exception as e:
+                    print(e)
+                    # TODO: DLQ 추가 및 구조적 로깅 적용
+                    continue
         finally:
-            await producer.stop()
-
-    return 0
+            await self.consumer.stop()
+            await self.producer.stop()
 
 
 def main() -> None:
-    args = _parse_args()
-    symbols = [s.strip() for s in args.symbols.split(",") if s.strip()]
-    code = asyncio.run(
-        _run(
-            exchange=args.exchange,
-            req_type=args.req_type,
-            symbols=symbols,
-            region=args.region,
-            expiry_ms=args.expiry_ms,
-            produce=bool(args.produce),
-        )
-    )
-    raise SystemExit(code)
+    asyncio.run(ConnectForwarder().run())
 
 
 if __name__ == "__main__":

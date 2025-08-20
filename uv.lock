@@ -207,7 +207,7 @@ wheels = [
 ]
 
 [[package]]
-name = "createparamterfactory"
+name = "create-paramter-factory"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [

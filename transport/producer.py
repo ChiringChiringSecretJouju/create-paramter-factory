@@ -39,7 +39,7 @@ class ConnectMessageBuilder:
     async def build(
         self,
         source: ExchangeMetadata,
-        symbols: Sequence[str],
+        symbols: list[str],
         expiry_ms: int | None = None,
     ) -> ConnectMessageTD:
         """Connect + Projection 메시지를 빌드합니다.
@@ -59,9 +59,11 @@ class ConnectMessageBuilder:
         region = source["region"]
         exchange = source["exchange"]
         req_type_str = source["request_type"]
+        print("symbols", symbols)
         config: ExchangeSocketConfig = self.svc.get_exchange_config(
             exchange, list(symbols), req_type_str, region
         )
+        print("config", config)
         projection: list[str] = await load_projection_async(
             exchange, req_type_str, self.template_dir
         )
