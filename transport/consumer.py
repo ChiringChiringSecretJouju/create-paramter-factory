@@ -59,21 +59,25 @@ class AioKafkaRequestConsumer:
 
     def __init__(
         self,
-        *,
         topic: str = "market_connect_request_v1",
         group_id: str = "create-parameter-factory-consumer",
         cfg: ProducerConfig | None = None,
-        region_default: str = "korea",
-        exchange_default: str = "bithumb",
     ) -> None:
+        """Kafka 요청 컨슈머를 초기화합니다.
+
+        Args:
+            topic: 구독할 Kafka 토픽 이름
+            group_id: 컨슈머 그룹 ID
+            cfg: Kafka 설정, None이면 기본값 사용
+
+        """
         self._topic = topic
         self._cfg = cfg or load_kafka_config()
         self._group_id = group_id
-        self._region_default = region_default
-        self._exchange_default = exchange_default
         self._consumer: AIOKafkaConsumer | None = None
 
     async def start(self) -> None:
+        """Kafka 컨슈머를 시작합니다."""
         if self._consumer is not None:
             return
         self._consumer = AIOKafkaConsumer(
@@ -87,26 +91,38 @@ class AioKafkaRequestConsumer:
         await self._consumer.start()
 
     async def stop(self) -> None:
+        """Kafka 컨슈머를 중지합니다."""
         if self._consumer is not None:
             await self._consumer.stop()
             self._consumer = None
 
     def __aiter__(self):
+        """비동기 이터레이터 프로토콜을 구현합니다.
+
+        Returns:
+            AsyncIterator: 비동기 이터레이터 객체
+        """
         if self._consumer is None:
             raise RuntimeError("consumer not started")
         return self._iterate()
 
     async def _iterate(self):
+        """내부 비동기 이터레이션 메서드입니다.
+
+        Returns:
+            AsyncGenerator: Kafka 레코드를 생성하는 제너레이터
+        """
         assert self._consumer is not None
         async for record in self._consumer:
             yield record
 
-    async def run(self) -> None:
-        if self._consumer is None:
-            raise RuntimeError("consumer not started")
-        try:
-            async for _ in self:
-                # 호출 측에서 직접 순회하며 처리하는 것을 권장합니다.
-                pass
-        finally:
-            await self.stop()
+    # async def run(self) -> None:
+    #     """컨슈머를 실행하여 메시지를 소비합니다"""
+    #     if self._consumer is None:
+    #         raise RuntimeError("consumer not started")
+    #     try:
+    #         async for _ in self:
+    #             # 호출 측에서 직접 순회하며 처리하는 것을 권장합니다.
+    #             pass
+    #     finally:
+    #         await self.stop()
