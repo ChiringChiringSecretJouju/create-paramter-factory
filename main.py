@@ -22,11 +22,11 @@ class ConnectForwarder:
 
     def __init__(self) -> None:
         self.consumer = AioKafkaRequestConsumer(
-            topic="market_connect_request_v1",
+            topic="ws.command",
             group_id="create-parameter-factory-consumer",
         )
         self.builder = ConnectMessageBuilder()
-        self.producer = AioKafkaConnectProducer()
+        self.producer = AioKafkaConnectProducer(topic="ws.status")
 
     @staticmethod
     def _extract_request_fields(payload: dict) -> tuple[str, str, str, list[str]]:
@@ -60,13 +60,14 @@ class ConnectForwarder:
         """
         region, exchange, req_type, symbols = self._extract_request_fields(payload)
         msg: ConnectMessageTD = await self.builder.build(
+            type="status",
+            action="connect_and_subscribe",
             source={
                 "region": region,
                 "exchange": exchange,
                 "request_type": req_type,
             },
             symbols=symbols,
-            expiry_ms=None,
         )
         if req.correlation_id:
             msg["ticket_id"] = req.correlation_id
@@ -84,7 +85,7 @@ class ConnectForwarder:
         payload = json.loads(raw_value.decode("utf-8"))
         req = RequestEnvelope.parse(payload)
         msg = await self._build_connect_message(payload, req)
-        await self.producer.send_connect(msg)
+        await self.producer.produce_connect(msg)
 
     async def run(self) -> None:
         """컨슈머를 실행하여 레코드를 소비하고 메시지를 전달합니다.
@@ -99,12 +100,8 @@ class ConnectForwarder:
         await self.producer.start()
         try:
             async for record in self.consumer:
-                try:
-                    await self.handle_record(record.value)
-                except Exception as e:
-                    print(e)
-                    # TODO: DLQ 추가 및 구조적 로깅 적용
-                    continue
+                await self.handle_record(record.value)
+
         finally:
             await self.consumer.stop()
             await self.producer.stop()

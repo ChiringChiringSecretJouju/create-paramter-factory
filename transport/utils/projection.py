@@ -15,7 +15,6 @@ from core.properties import SocketRequestType
 @dataclass(slots=True)
 class ProducerConfig:
     bootstrap_servers: str = "localhost:9092"
-    topic: str = "market_connect_v1"
     acks: int | str = 1
     linger_ms: int = 0
     max_batch_size: int = 1_048_576
@@ -28,7 +27,6 @@ class ProducerConfig:
         parser.read(path.as_posix())
 
         bs = parser.get("KAFKA", "bootstrap_servers")
-        topic = parser.get("KAFKA", "topic", fallback="market_connect_v1")
         acks_raw = parser.get("KAFKA", "acks", fallback="1")
 
         try:
@@ -44,7 +42,6 @@ class ProducerConfig:
         )
         return cls(
             bootstrap_servers=bs,
-            topic=topic,
             acks=acks,
             linger_ms=linger_ms,
             max_batch_size=max_batch_size,

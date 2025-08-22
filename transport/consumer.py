@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any, Sequence
 
 from aiokafka import AIOKafkaConsumer
@@ -8,37 +7,86 @@ from aiokafka import AIOKafkaConsumer
 from core.types import SocketRequestType
 from transport.utils.projection import ProducerConfig, load_kafka_config
 
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
-@dataclass(slots=True)
-class RequestEnvelope:
+
+class RequestEnvelope(BaseModel):
     socket_mode: SocketRequestType
     symbols: list[str]
     orderbook_depth: int | None = None
     realtime_only: bool | None = None
     correlation_id: str | None = None
 
+    model_config = ConfigDict(extra="ignore")
+
+    @model_validator(mode="before")
+    @classmethod
+    def _normalize_socket_mode(cls, data: Any) -> Any:
+        """외부 JSON 페이로드에서 `socket_mode`를 추출/소문자화합니다.
+
+        Args:
+            data (Any): Kafka/외부 호출로부터 온 임의의 JSON. dict가 아닐 수도 있어 Any 사용.
+
+        Return:
+            Any: `socket_mode`가 정규화된 dict 또는 원본 값.
+        """
+        if not isinstance(data, dict):
+            return data
+        target = data.get("target")
+        if isinstance(target, dict) and "request_type" in target:
+            mode = str(target.get("request_type", "")).strip().lower()
+            data = {**data, "socket_mode": mode}
+        elif "socket_mode" in data and data["socket_mode"] is not None:
+            data = {**data, "socket_mode": str(data["socket_mode"]).strip().lower()}
+        return data
+
+    @model_validator(mode="before")
+    @classmethod
+    def _lift_nested_fields(cls, data: Any) -> Any:
+        """중첩 필드(`connection.socket_params.symbols`)를 상위로 승격합니다.
+
+        Args:
+            data (Any): 외부 JSON 페이로드.
+
+        Return:
+            Any: 누락된 상위 필드를 보완한 dict 또는 원본 값.
+        """
+        if not isinstance(data, dict):
+            return data
+        if "symbols" not in data:
+            socket_params = (data.get("connection") or {}).get("socket_params") or {}
+            if isinstance(socket_params, dict) and "symbols" in socket_params:
+                data = {**data, "symbols": socket_params.get("symbols")}
+        return data
+
+    @field_validator("symbols", mode="before")
+    @classmethod
+    def _normalize_symbols(cls, v: Any) -> list[str]:
+        """`symbols`를 표준 `list[str]`로 변환합니다.
+
+        Args:
+            v (Any): 단일 문자열, 문자열 시퀀스 또는 임의의 JSON. 유연한 입력 수용을 위해 Any 사용.
+
+        Return:
+            list[str]: 정규화된 심볼 리스트.
+        """
+        if isinstance(v, str):
+            return [v]
+        if isinstance(v, Sequence):
+            return [str(s) for s in v]
+        raise ValueError("symbols must be a string or a list of strings")
+
     @staticmethod
     def parse(payload: dict[str, Any]) -> RequestEnvelope:
-        mode = payload.get("target", {}).get("request_type", "").strip().lower()
-        if mode not in ("ticker", "orderbook", "trade"):
-            raise ValueError("socket_mode must be one of: ticker, orderbook, trade")
-        raw_symbols = payload.get("symbols", [])
-        if isinstance(raw_symbols, str):
-            symbols: list[str] = [raw_symbols]
-        elif isinstance(raw_symbols, Sequence):
-            symbols = [str(s) for s in raw_symbols]
-        else:
-            raise ValueError("symbols must be a string or a list of strings")
-        depth = payload.get("orderbook_depth")
-        realtime = payload.get("realtime_only")
-        corr = payload.get("correlation_id")
-        return RequestEnvelope(
-            socket_mode=mode,  # type: ignore[assignment]
-            symbols=symbols,
-            orderbook_depth=int(depth) if depth is not None else None,
-            realtime_only=bool(realtime) if realtime is not None else None,
-            correlation_id=str(corr) if corr is not None else None,
-        )
+        """페이로드를 검증/파싱하여 `RequestEnvelope`로 반환합니다.
+
+        Args:
+            payload (dict[str, Any]): 외부 JSON 페이로드.
+
+        Return:
+            RequestEnvelope: 검증된 모델 인스턴스.
+        """
+        return RequestEnvelope.model_validate(payload)
 
 
 class AioKafkaRequestConsumer:
@@ -59,7 +107,7 @@ class AioKafkaRequestConsumer:
 
     def __init__(
         self,
-        topic: str = "market_connect_request_v1",
+        topic: str,
         group_id: str = "create-parameter-factory-consumer",
         cfg: ProducerConfig | None = None,
     ) -> None:

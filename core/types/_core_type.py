@@ -64,8 +64,8 @@ class SocketConnectMetaData:
 
     region: str
     exchange: str
+    symbols: list[str]
     req_type: SocketRequestType
-    symbols: Sequence[str]
     expiry_ms: int | None = None
 
 

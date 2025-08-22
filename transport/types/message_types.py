@@ -77,12 +77,11 @@ class ConnectMessageTD(TypedDict, total=False):
     - expiry_ms: 메시지 만료 시간(밀리초)
     """
 
-    type: NotRequired[Literal["command"]]
-    action: NotRequired[Literal["connect", "connect_and_subscribe"]]
+    type: NotRequired[str]
+    action: NotRequired[str]
     ticket_id: NotRequired[str]
     ttl_ms: NotRequired[int]
     routing: NotRequired[RoutingTD]
-    reliability: NotRequired[ReliabilityTD]
 
     schema_version: str
     symbols: list[str]
@@ -110,9 +109,7 @@ def default_routing(region: str, exchange: str, req_type: str) -> RoutingTD:
         out_topics={
             "raw": f"market.raw.{exchange}.{req_type}",
             "norm": f"market.norm.{region}.{req_type}",
-        },
-        ack_topic="ws.status",
-        error_topic="ws.error",
+        }
     )
 
 
