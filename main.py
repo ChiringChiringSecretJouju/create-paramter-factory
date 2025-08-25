@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import json
 from transport.types.message_types import ConnectMessageTD
+from common.logger import PipelineLogger
+from common.exceptions import ExchangeException
 from transport.producer import (
     AioKafkaConnectProducer,
     ConnectMessageBuilder,
@@ -22,11 +24,12 @@ class ConnectForwarder:
 
     def __init__(self) -> None:
         self.consumer = AioKafkaRequestConsumer(
-            topic="market_connect_request_v1",
+            topic="ws.command",
             group_id="create-parameter-factory-consumer",
         )
         self.builder = ConnectMessageBuilder()
-        self.producer = AioKafkaConnectProducer()
+        self.producer = AioKafkaConnectProducer(topic="ws.status")
+        self.logger = PipelineLogger.get_logger("connect_forwarder", "forwarder")
 
     @staticmethod
     def _extract_request_fields(payload: dict) -> tuple[str, str, str, list[str]]:
@@ -59,14 +62,15 @@ class ConnectForwarder:
             ConnectMessageTD: 생성된 Connect 메시지
         """
         region, exchange, req_type, symbols = self._extract_request_fields(payload)
-        msg: ConnectMessageTD = await self.builder.build(
+        msg: ConnectMessageTD = await self.builder.create_ticket(
+            type="status",
+            action="connect_and_subscribe",
             source={
                 "region": region,
                 "exchange": exchange,
                 "request_type": req_type,
             },
             symbols=symbols,
-            expiry_ms=None,
         )
         if req.correlation_id:
             msg["ticket_id"] = req.correlation_id
@@ -84,7 +88,7 @@ class ConnectForwarder:
         payload = json.loads(raw_value.decode("utf-8"))
         req = RequestEnvelope.parse(payload)
         msg = await self._build_connect_message(payload, req)
-        await self.producer.send_connect(msg)
+        await self.producer.produce_connect(msg)
 
     async def run(self) -> None:
         """컨슈머를 실행하여 레코드를 소비하고 메시지를 전달합니다.
@@ -101,9 +105,22 @@ class ConnectForwarder:
             async for record in self.consumer:
                 try:
                     await self.handle_record(record.value)
+                    self.logger.info(
+                        f"Record processed successfully. parameter sending to kafka --> {record.value}"
+                    )
+                except ExchangeException as e:
+                    # ws.error 퍼블리시는 상위 데코레이터에서 이미 수행됨. 여기서는 계속 진행.
+                    self.logger.error(
+                        f"ExchangeException handled and continued: {str(e)}",
+                        exchange=getattr(e, "exchange_name", ""),
+                    )
+                    continue
                 except Exception as e:
-                    print(e)
-                    # TODO: DLQ 추가 및 구조적 로깅 적용
+                    # 예기치 못한 예외도 서비스 중단 없이 계속 진행
+                    self.logger.error(
+                        f"Unexpected error while handling record: {str(e)}",
+                        exchange="",
+                    )
                     continue
         finally:
             await self.consumer.stop()

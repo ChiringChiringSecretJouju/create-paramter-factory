@@ -1,6 +1,10 @@
 import configparser
 from pathlib import Path
 from core.types import AllMarketURLs, KoreaRegionURLs
+from common.exceptions import (
+    RegionNotRegisteredException,
+    MarketNotRegisteredException,
+)
 
 # ConfigParser 설정 (core/socket_uri/builder.py 기준으로 core/_urls.conf를 읽음)
 path = Path(__file__).parent.parent.parent
@@ -47,12 +51,22 @@ class ExchangeURLManager:
         region_urls: dict[str, str] = urls.get(location)
 
         if not region_urls:
-            raise RuntimeError(f"지역이 등록되지 않았습니다: {location}")
+            raise RegionNotRegisteredException(
+                region=location,
+                exchange_name=market,
+                req_type=url_type,
+                symbols=[],
+                message=f"지역이 등록되지 않았습니다: {location}",
+            )
 
         ex_urls: str | None = region_urls.get(market)
         if not ex_urls:
-            raise RuntimeError(
-                f"{location} 지역에서 등록되지 않은 거래소입니다: {market}"
+            raise MarketNotRegisteredException(
+                region=location,
+                exchange_name=market,
+                req_type=url_type,
+                symbols=[],
+                message=f"{location} 지역에서 등록되지 않은 거래소입니다: {market}",
             )
 
         return ex_urls
@@ -62,5 +76,11 @@ class ExchangeURLManager:
         urls: AllMarketURLs = self.get_exchange_urls(uri_type.upper())
         region_urls = urls.get(region)
         if not region_urls:
-            raise RuntimeError(f"지역이 등록되지 않았습니다: {region}")
+            raise RegionNotRegisteredException(
+                region=region,
+                exchange_name="",
+                req_type=uri_type,
+                symbols=[],
+                message=f"지역이 등록되지 않았습니다: {region}",
+            )
         return region_urls

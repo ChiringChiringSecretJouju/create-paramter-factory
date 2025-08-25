@@ -1,18 +1,5 @@
 from typing import TypedDict, NotRequired, Literal
-from core.types import ExchangeSocketConfig
-
-
-class ExchangeMetadata(TypedDict):
-    """이벤트의 출처(메타데이터)를 표현.
-
-    - region: 지역 (예: "korea")
-    - exchange: 거래소 (예: "bithumb")
-    - request_type: 요청 타입 (예: "ticker", "orderbook", "trade")
-    """
-
-    region: str
-    exchange: str
-    request_type: str
+from common.types import ExchangeMetadata, ExchangeSocketConfig
 
 
 class RoutingTD(TypedDict, total=False):
@@ -77,12 +64,11 @@ class ConnectMessageTD(TypedDict, total=False):
     - expiry_ms: 메시지 만료 시간(밀리초)
     """
 
-    type: NotRequired[Literal["command"]]
-    action: NotRequired[Literal["connect", "connect_and_subscribe"]]
+    type: NotRequired[str]
+    action: NotRequired[str]
     ticket_id: NotRequired[str]
     ttl_ms: NotRequired[int]
     routing: NotRequired[RoutingTD]
-    reliability: NotRequired[ReliabilityTD]
 
     schema_version: str
     symbols: list[str]
@@ -110,9 +96,7 @@ def default_routing(region: str, exchange: str, req_type: str) -> RoutingTD:
         out_topics={
             "raw": f"market.raw.{exchange}.{req_type}",
             "norm": f"market.norm.{region}.{req_type}",
-        },
-        ack_topic="ws.status",
-        error_topic="ws.error",
+        }
     )
 
 

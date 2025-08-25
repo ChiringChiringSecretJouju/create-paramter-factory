@@ -19,5 +19,14 @@
 - `core/types/`
   - 소켓 요청 타입, 구성 타입, 스펙(`SocketConnectMetaData`) 등 정의
 
-## 3) 날짜
-- 2025-08-20
+## 3) 타입/에러 처리 정책 업데이트 (2025-08-25)
+- Ok/Err/Result 제거, 예외 기반 API로 단순화
+  - 정상: 값 직접 반환
+  - 오류: 예외 발생(`RuntimeError` 등), 상위에서 처리/로깅
+- 공용 타입 별칭 분리: `common/types.py`
+  - `AsyncFn`, `AsyncFnWithErrDict`, `HandleExDecorator`
+- `core/types/__init__.py`는 공개 심볼만 명시적으로 export
+  - 예: `SocketRequestType`, `KoreaRegionURLs`, `AllMarketURLs`, `ExchangeSocketConfig`, `SocketConnectMetaData`
+
+## 4) 날짜
+- 2025-08-25
