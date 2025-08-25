@@ -3,6 +3,8 @@ from __future__ import annotations
 import asyncio
 import json
 from transport.types.message_types import ConnectMessageTD
+from common.logger import PipelineLogger
+from common.exceptions import ExchangeException
 from transport.producer import (
     AioKafkaConnectProducer,
     ConnectMessageBuilder,
@@ -27,6 +29,7 @@ class ConnectForwarder:
         )
         self.builder = ConnectMessageBuilder()
         self.producer = AioKafkaConnectProducer(topic="ws.status")
+        self.logger = PipelineLogger.get_logger("connect_forwarder", "forwarder")
 
     @staticmethod
     def _extract_request_fields(payload: dict) -> tuple[str, str, str, list[str]]:
@@ -100,8 +103,25 @@ class ConnectForwarder:
         await self.producer.start()
         try:
             async for record in self.consumer:
-                await self.handle_record(record.value)
-
+                try:
+                    await self.handle_record(record.value)
+                    self.logger.info(
+                        f"Record processed successfully. parameter sending to kafka --> {record.value}"
+                    )
+                except ExchangeException as e:
+                    # ws.error 퍼블리시는 상위 데코레이터에서 이미 수행됨. 여기서는 계속 진행.
+                    self.logger.error(
+                        f"ExchangeException handled and continued: {str(e)}",
+                        exchange=getattr(e, "exchange_name", ""),
+                    )
+                    continue
+                except Exception as e:
+                    # 예기치 못한 예외도 서비스 중단 없이 계속 진행
+                    self.logger.error(
+                        f"Unexpected error while handling record: {str(e)}",
+                        exchange="",
+                    )
+                    continue
         finally:
             await self.consumer.stop()
             await self.producer.stop()

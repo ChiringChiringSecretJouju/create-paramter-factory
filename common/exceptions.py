@@ -119,19 +119,75 @@ class ExchangeException(Exception):
 
 # 특화된 예외 클래스들
 class ConnectionException(ExchangeException):
+    """소켓 연결 과정에서 발생한 예외의 베이스."""
+
     pass
 
 
 class ConnectionTimeoutException(ConnectionException):
+    """소켓 연결 타임아웃 발생."""
+
     pass
 
 
 class MessageProcessingException(ExchangeException):
+    """소켓 메시지 처리 과정에서 발생한 예외의 베이스."""
+
     pass
 
 
 class JSONParsingException(MessageProcessingException):
+    """JSON 파싱 과정에서 발생한 예외."""
+
     pass
+
+
+# ---------------- URL Resolve specific exceptions ---------------- #
+class UrlResolveException(ExchangeException):
+    """URL 조회/해석 과정에서 발생한 예외의 베이스."""
+
+
+class RegionNotRegisteredException(UrlResolveException):
+    """지정된 지역이 설정에 존재하지 않을 때."""
+
+    pass
+
+
+class MarketNotRegisteredException(UrlResolveException):
+    """해당 지역에 지정된 거래소가 존재하지 않을 때."""
+
+    pass
+
+
+async def publish_url_error_event(
+    *,
+    region: str,
+    exchange_name: str,
+    req_type: str,
+    symbols: list[str] | None,
+    message: str,
+    original_exception: Exception | None = None,
+    publisher: PublisherFn | None = None,
+) -> None:
+    """URL 조회 실패를 ws.error 이벤트로 퍼블리시합니다.
+
+    Note:
+        - 퍼블리셔가 주입되지 않으면 로컬 에러 로그(_log_ws_error)로 대체됩니다.
+        - 호출 측에서 적절한 예외를 다시 raise 하거나 흐름을 결정하세요.
+    """
+    exc = UrlResolveException(
+        region=region,
+        exchange_name=exchange_name,
+        req_type=req_type,
+        symbols=list(symbols or []),
+        message=message,
+        original_exception=original_exception,
+    )
+    payload = exc.to_dict()
+    if publisher is not None:
+        await publisher(payload)
+    else:
+        await _log_ws_error(payload)
 
 
 # 예외처리 데코레이터

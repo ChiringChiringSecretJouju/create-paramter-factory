@@ -31,7 +31,19 @@ class ConnectMessageBuilder:
     def __init__(self, template_dir: str = "setting/templates") -> None:
         self.template_dir = template_dir
         self.svc = ExchangeService()
+        # 예외 데코레이터 컨텍스트
+        self._exchange_name: str = ""
+        self._region: str = ""
+        self._req_type: str = ""
+        self._symbols: list[str] = []
 
+    @handle_exchange_exceptions(
+        exchange_name_attr="_exchange_name",
+        region_attr="_region",
+        req_type_attr="_req_type",
+        symbols_attr="_symbols",
+        publisher=publish_ws_error,
+    )
     async def create_ticket(
         self,
         type: str,
@@ -52,10 +64,16 @@ class ConnectMessageBuilder:
         Raises:
             RuntimeError: 구성 생성에 실패한 경우
         """
-        # URL 및 소켓 파라미터 구성 (동기)
+        # 데코레이터 컨텍스트 세팅
         region: str = source["region"]
         exchange: str = source["exchange"]
         req_type_str: str = source["request_type"]
+        self._exchange_name = exchange
+        self._region = region
+        self._req_type = req_type_str
+        self._symbols = list(symbols)
+
+        # URL 및 소켓 파라미터 구성 (동기)
         config: ExchangeSocketConfig = self.svc.get_exchange_config(
             exchange=exchange,
             symbols=list(symbols),
@@ -87,6 +105,13 @@ class ConnectMessageBuilder:
         #     msg.expiry_ms = int(expiry_ms)
         return msg
 
+    @handle_exchange_exceptions(
+        exchange_name_attr="_exchange_name",
+        region_attr="_region",
+        req_type_attr="_req_type",
+        symbols_attr="_symbols",
+        publisher=publish_ws_error,
+    )
     async def build_from_spec(self, spec: SCMeta) -> ConnectMessageTD:
         """ConnectSpec를 받아 메시지를 생성합니다.
 
@@ -97,6 +122,12 @@ class ConnectMessageBuilder:
         Raises:
             ExchangeException: 구성 생성에 실패한 경우
         """
+        # 데코레이터 컨텍스트 세팅 (spec 기반)
+        self._exchange_name = spec.exchange
+        self._region = spec.region
+        self._req_type = spec.req_type
+        self._symbols = list(spec.symbols)
+
         # SCMeta는 dataclass이므로 속성 접근 사용
         source: ExchangeMetadata = make_exchange_metadata(
             region=spec.region,
