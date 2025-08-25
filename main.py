@@ -59,7 +59,7 @@ class ConnectForwarder:
             ConnectMessageTD: 생성된 Connect 메시지
         """
         region, exchange, req_type, symbols = self._extract_request_fields(payload)
-        msg: ConnectMessageTD = await self.builder.build(
+        msg: ConnectMessageTD = await self.builder.create_ticket(
             type="status",
             action="connect_and_subscribe",
             source={

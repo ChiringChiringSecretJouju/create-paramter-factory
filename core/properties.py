@@ -1,10 +1,8 @@
+from common.types import ExchangeSocketConfig
 from core.types import (
     AllMarketURLs,
-    NationalMarketURLs,
-    ExchangeSocketConfig,
     SocketRequestType,
     SocketConnectMetaData,
-    Err,
 )
 from core.socket_params import SocketParameterFactory
 from core.socket_uri.uri_builder import ExchangeURLManager
@@ -46,10 +44,6 @@ class ExchangeConfigManager:
             location=spec.region,
             url_type="socket",
         )
-        if isinstance(url_result, Err):
-            raise RuntimeError(
-                f"URL 정보를 가져오는데 실패했습니다: {url_result.error}"
-            )
 
         try:
             socket_params = self._socket_factory.create_socket_parameter(
@@ -155,14 +149,14 @@ class ExchangeService:
             )
         return res
 
-    def get_all_region_urls(self, region: str, url_type: str) -> NationalMarketURLs:
+    def get_all_region_urls(self, region: str, url_type: str) -> dict[str, str]:
         """지역에 대한 URL을 반환합니다.
 
         Args:
             region: 지역
             url_type: URL 유형
         Returns:
-            NationalMarketURLs: URL
+            dict[str, str]: URL
         """
         res = self._url_manager.get_region_urls(region, url_type.upper())
         if not res:

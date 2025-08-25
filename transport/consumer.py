@@ -5,7 +5,7 @@ from typing import Any, Sequence
 from aiokafka import AIOKafkaConsumer
 
 from core.types import SocketRequestType
-from transport.utils.projection import ProducerConfig, load_kafka_config
+from common.broker_config import ProducerConfig, load_kafka_config
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 

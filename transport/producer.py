@@ -1,28 +1,25 @@
 from __future__ import annotations
 
-from aiokafka import AIOKafkaProducer
 from typing import Any
 
+from aiokafka import AIOKafkaProducer
+
+from common.broker_config import ProducerConfig, load_kafka_config
+from common.exceptions import handle_exchange_exceptions
 from common.serde import to_bytes
+from common.types import ExchangeSocketConfig
 from core.properties import ExchangeService
-from core.types import ExchangeSocketConfig
+from transport.di.producer_factory import AiokafkaProducerFactory, KafkaProducerFactory
+from transport.di.ws_error_publisher import publish_ws_error
+from transport.types.headers import HeaderKey, KafkaHeader
 from transport.types.message_types import (
     ConnectMessageTD,
     ExchangeMetadata,
     default_routing,
 )
 from transport.types.specs import SocketConnectMetaData as SCMeta
-from transport.types.headers import HeaderKey, KafkaHeader
+from transport.utils.projection import load_projection_async, make_exchange_metadata
 from transport.utils.time import now_ms_kst
-from transport.utils.projection import (
-    load_projection_async,
-    load_kafka_config,
-    make_exchange_metadata,
-    ProducerConfig,
-)
-from transport.di.producer_factory import KafkaProducerFactory, AiokafkaProducerFactory
-from common.exceptions import handle_exchange_exceptions
-
 
 SCHEMA_VERSION = "1.0.0"
 DEFAULT_TTL_MS = 30_000
@@ -35,7 +32,7 @@ class ConnectMessageBuilder:
         self.template_dir = template_dir
         self.svc = ExchangeService()
 
-    async def build(
+    async def create_ticket(
         self,
         type: str,
         action: str,
@@ -71,33 +68,26 @@ class ConnectMessageBuilder:
             template_dir=self.template_dir,
         )
         now: int = now_ms_kst()
-        msg = ConnectMessageTD(
-            type=type,
-            action=action,
-            ttl_ms=DEFAULT_TTL_MS,
-            routing=default_routing(region, exchange, req_type_str),
-            schema_version=SCHEMA_VERSION,
-            target=source,
-            symbols=list(symbols),
-            connection=config,
-            projection=projection,
-            ts_issue=now,
-            ts_ingest=now,
-        )
+        msg: ConnectMessageTD = {
+            "type": type,
+            "action": action,
+            "ttl_ms": DEFAULT_TTL_MS,
+            "routing": default_routing(region, exchange, req_type_str),
+            "schema_version": SCHEMA_VERSION,
+            "target": source,
+            "symbols": list(symbols),
+            "connection": config,
+            "projection": projection,
+            "ts_issue": now,
+            "ts_ingest": now,
+        }
 
         # 일단 보류
         # if expiry_ms is not None:
         #     msg.expiry_ms = int(expiry_ms)
         return msg
 
-    @handle_exchange_exceptions(
-        exchange_name_attr="_exchange_name",
-        region_attr="_region",
-        req_type_attr="_req_type",
-        symbols_attr="_symbols",
-        return_as_dict=True,
-    )
-    async def build_from_spec(self, spec: SCMeta) -> ConnectMessageTD | dict[str, Any]:
+    async def build_from_spec(self, spec: SCMeta) -> ConnectMessageTD:
         """ConnectSpec를 받아 메시지를 생성합니다.
 
         Args:
@@ -105,25 +95,19 @@ class ConnectMessageBuilder:
         Returns:
             ConnectMessageTD: 생성된 Connect 메시지
         Raises:
-            RuntimeError: 구성 생성에 실패한 경우
+            ExchangeException: 구성 생성에 실패한 경우
         """
-        print("심볼", spec["symbols"])
-        # 컨텍스트 속성 먼저 세팅 (예외 발생 전 확보)
-        self._exchange_name = spec["target"]["exchange"]
-        self._region = spec["target"]["region"]
-        self._req_type = spec["target"]["request_type"]
-        self._symbols = list(spec["symbols"]) if spec.get("symbols") is not None else []
-
+        # SCMeta는 dataclass이므로 속성 접근 사용
         source: ExchangeMetadata = make_exchange_metadata(
-            region=self._region,
-            exchange=self._exchange_name,
-            req_type=self._req_type,
+            region=spec.region,
+            exchange=spec.exchange,
+            req_type=spec.req_type,
         )
-        return await self.build(
+        return await self.create_ticket(
             type="status",
             action="connect_and_subscribe",
             source=source,
-            symbols=self._symbols,
+            symbols=list(spec.symbols),
             # expiry_ms=spec.expiry_ms,
         )
 
@@ -191,39 +175,10 @@ class AioKafkaConnectProducer:
             (HeaderKey.CONTENT_TYPE.value, b"application/json"),
         ]
 
-    @handle_exchange_exceptions(
-        exchange_name_attr="_exchange_name",
-        region_attr="_region",
-        req_type_attr="_req_type",
-        symbols_attr="_symbols",
-        return_as_dict=True,
-    )
-    async def produce_connect(self, spec: SCMeta) -> dict[str, Any] | None:
-        """Kafka로 메시지를 전송합니다.
-
-        Args:
-            spec: ConnectSpec
-
-        Raises:
-            RuntimeError: Producer가 시작되지 않은 경우
-        """
+    async def send_connect(self, msg: ConnectMessageTD) -> None:
+        """Connect 메시지를 Kafka로 전송합니다. start() 선행 필요."""
         if self._producer is None:
             raise RuntimeError("Producer is not started. Call start() first.")
-
-        # 컨텍스트 속성 먼저 세팅 (예외 발생 전 확보)
-        target = spec["target"]
-        self._exchange_name = target["exchange"]
-        self._region = target["region"]
-        self._req_type = target["request_type"]
-        self._symbols = list(spec["symbols"])
-
-        # Connect 메시지 생성
-        msg = await self._builder.build_from_spec(spec)
-        # build_from_spec가 데코레이터에 의해 에러 dict를 반환한 경우, 즉시 반환하여 중복 처리 방지
-        if isinstance(msg, dict):
-            return msg
-
-        # 메시지 전송
         source: ExchangeMetadata = msg["target"]
         await self._producer.send_and_wait(
             topic=self.topic,
@@ -231,3 +186,29 @@ class AioKafkaConnectProducer:
             value=to_bytes(msg),
             headers=self._make_headers(source),
         )
+
+    @handle_exchange_exceptions(
+        exchange_name_attr="_exchange_name",
+        region_attr="_region",
+        req_type_attr="_req_type",
+        symbols_attr="_symbols",
+        publisher=publish_ws_error,
+    )
+    async def produce_connect(self, msg: ConnectMessageTD) -> None:
+        """Kafka로 메시지를 전송합니다.
+
+        Args:
+            msg: ConnectMessageTD (이미 빌드된 메시지)
+
+        Raises:
+            RuntimeError: Producer가 시작되지 않은 경우
+        """
+        # 컨텍스트 속성 먼저 세팅 (예외 발생 전 확보)
+        source: ExchangeMetadata = msg["target"]
+        self._exchange_name: str = source["exchange"]
+        self._region: str = source["region"]
+        self._req_type: str = source["request_type"]
+        self._symbols: list[str] = list(msg.get("symbols", []))
+
+        # 이미 빌드된 메시지 전송
+        await self.send_connect(msg)

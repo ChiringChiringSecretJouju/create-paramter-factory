@@ -5,7 +5,7 @@
 ## 변경 사항 요약 (2025-08)
 - 예외 기반 API로 전환: `Result/Ok/Err` 반환 제거. 정상 값 반환, 실패 시 예외 발생.
 - 스펙 데이터 클래스명 변경: `SocketConnetMetaData` → `SocketConnectMetaData`.
-- 스펙 위치: `core/types/_core_type.py`가 단일 소스. `transport/types/specs.py`는 재내보내기만 수행.
+- 스펙/타입 위치: 도메인 스펙은 `core/types/_core_type.py`, 공용 전송/구성 타입은 `common/types.py`.
 - API 시그니처 변경:
   - `ExchangeConfigManager.get_exchange_config(spec)` → `ExchangeSocketConfig`
   - `ExchangeConfigManager.get_all_exchange_configs(spec)` → `dict[str, ExchangeSocketConfig]`
@@ -13,10 +13,20 @@
   - `ExchangeService.get_all_exchange_configs(spec)` → `dict[str, ExchangeSocketConfig]`
   - URL 매니저: `ExchangeURLManager.get_region_urls(...) -> dict[str, str]`, `get_symbol_collect_url(...) -> str`
 
+### 타입 경로 변경 사항
+- `ExchangeSocketConfig`: `core/types/_core_type.py` → `common/types.py`
+- `ExchangeMetadata`: `transport/types/message_types.py` 자체 정의 → `common/types.py` 재사용
+
 ## 1) 목적(What)
 - 거래소별 WebSocket 연결 설정을 일관된 인터페이스로 제공
 - URI(웹소켓 URL) + 구독 파라미터를 하나의 구성으로 반환
 - 템플릿 기반으로 요청타입별(ticker/orderbook/trade) 메시지 구조를 안전하게 관리
+
+### Kafka 설정 위치 변경 (2025-08)
+- 공통 Kafka 설정이 `common/broker_config.py`로 이동했습니다.
+  - 사용: `from common.broker_config import ProducerConfig, load_kafka_config`
+  - 기존 `transport/utils/projection.py` 내 설정 로더/데이터클래스는 제거되었습니다.
+  - 목적: 레이어 간 순환 의존 제거 및 횡단 관심사의 공용화.
 
 ## 2) 현재 지원 현황(Where) 및 로드맵
 - 현재 국가/거래소

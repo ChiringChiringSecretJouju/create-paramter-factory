@@ -28,16 +28,12 @@ tests/test_exchange_service.py::test_exchange_service_config_by_exchange_and_typ
 import pytest
 from core.socket_uri.uri_builder import ExchangeURLManager
 from core.properties import ExchangeService
-from core.types import Ok
-from core.properties import SocketRequestType
+from core.types import SocketRequestType
 
 
 def test_get_region_urls_korea_socket():
     manager = ExchangeURLManager()
-    result = manager.get_region_urls("korea", "socket")
-
-    assert isinstance(result, Ok), f"Expected Ok, got {type(result)}"
-    urls = result.value()
+    urls = manager.get_region_urls("korea", "socket")
 
     # Basic structure checks
     assert isinstance(urls, dict)
@@ -57,20 +53,15 @@ def test_exchange_service_config_by_exchange_and_type(
 ):
     svc = ExchangeService()
 
-    res = svc.get_exchange_config(
+    cfg = svc.get_exchange_config(
         exchange=exchange,
         symbols=["BTC"],
         req_type=req_type,
         region="korea",
     )
 
-    assert isinstance(res, Ok), f"Expected Ok, got {type(res)}"
-    cfg = res.value()
-
     # URL checks
-    assert (
-        "url" in cfg and isinstance(cfg["url"], str) and cfg["url"].startswith("wss://")
-    )
+    assert ("url" in cfg and isinstance(cfg["url"], str) and cfg["url"].startswith("wss://"))
 
     # Socket params checks (shape varies by exchange)
     assert "socket_params" in cfg

@@ -6,62 +6,42 @@ from dataclasses import dataclass
 from functools import wraps
 from datetime import datetime
 from zoneinfo import ZoneInfo
-from typing import Any, Awaitable, Callable, ParamSpec, Sequence, TypeVar, TypeAlias
+from typing import Any, Sequence, Awaitable, Callable
 
-from aiokafka import AIOKafkaProducer
 from kafka.errors import KafkaConnectionError, KafkaProtocolError, NoBrokersAvailable
 
 from common.logger import PipelineLogger
-from common.serde import to_bytes
-from transport.utils.projection import load_kafka_config
+from common.types import (
+    AsyncFn,
+    AsyncFnWithErrDict,
+    HandleExDecorator,
+    ExchangeMetadata,
+    WsErrorEventTD,
+    P,
+    R,
+)
 
-# 제네릭 타입 정의
-T = TypeVar("T")
-P = ParamSpec("P")
-R = TypeVar("R")
-AsyncFn: TypeAlias = Callable[P, Awaitable[R]]
-AsyncFnWithErrDict: TypeAlias = Callable[P, Awaitable[R | dict[str, Any]]]
-HandleExDecorator: TypeAlias = Callable[[AsyncFn], AsyncFnWithErrDict]
+# 제네릭 타입 정의 (공통 타입 별칭은 common/types.py에 보관)
 
 logger = PipelineLogger.get_logger("exchange_exceptions", "exceptions")
 
-# ws.error 토픽 전송을 위한 프로듀서 (지연 초기화)
-ERROR_TOPIC = "ws.error"
+# 이벤트 스키마 버전 (ws.error 등 공용 이벤트에 사용)
 ERROR_SCHEMA_VERSION = "1.0.0"
-_producer_cfg = load_kafka_config()
+
+# 주입 가능한 퍼블리셔 콜백 시그니처
+PublisherFn = Callable[[WsErrorEventTD], Awaitable[None]]
 
 
-def _make_error_key(source: dict[str, Any]) -> bytes:
-    region: str = str(source.get("region", ""))
-    exchange: str = str(source.get("exchange", ""))
-    req_type: str = str(source.get("request_type", ""))
-    return f"{region}|{exchange}|{req_type}".encode("utf-8")
-
-
-async def _publish_ws_error(payload: dict[str, Any]) -> None:
+async def _log_ws_error(payload: WsErrorEventTD) -> None:
+    """기본 퍼블리셔: 카프카 미연결 환경에서 JSON 로그만 남김."""
     try:
-        producer = AIOKafkaProducer(
-            bootstrap_servers=_producer_cfg.bootstrap_servers,
-            acks=_producer_cfg.acks,
-            linger_ms=_producer_cfg.linger_ms,
-            max_batch_size=_producer_cfg.max_batch_size,
-            max_request_size=_producer_cfg.max_request_size,
+        logger.error(
+            "ws.error event: %s",
+            json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
         )
-        await producer.start()
-        source = payload.get("source", {})
-        await producer.send_and_wait(
-            topic=ERROR_TOPIC,
-            key=_make_error_key(source),
-            value=to_bytes(payload),
-        )
-    except Exception as send_err:
-        # 에러 전송 실패는 애플리케이션 흐름을 막지 않도록 로그만 남김
-        logger.warning(
-            f"Failed to publish ws.error event: {send_err}",
-            exchange=source.get("exchange", "global"),
-        )
-    finally:
-        await producer.stop()
+    except Exception:
+        # 로깅 실패는 무시
+        pass
 
 
 """
@@ -94,6 +74,9 @@ KafkaException: tuple[type[Exception], ...] = (
     KafkaConnectionError,
 )
 
+# 두 그룹을 하나로 합친 예외 튜플 (except 절에서 튜플 중첩을 피하기 위해)
+HANDLED_EXCEPTIONS: tuple[type[Exception], ...] = AsyncException + KafkaException
+
 
 @dataclass(slots=True, frozen=True)
 class ExchangeException(Exception):
@@ -107,11 +90,13 @@ class ExchangeException(Exception):
     original_exception: Exception | None = None
 
     def __post_init__(self) -> None:
-        super().__init__(f"[{self.exchange_name}] {self.message}")
+        # super()는 frozen dataclass + Exception 상속에서 타입 에러를 유발할 수 있음
+        # 직접 기반 클래스 초기화를 호출하여 메시지를 설정
+        Exception.__init__(self, f"[{self.exchange_name}] {self.message}")
 
-    def to_dict(self) -> dict[str, Any]:
+    def to_dict(self) -> WsErrorEventTD:
         """예외 정보를 이벤트 데이터로 변환"""
-        result = {
+        result: WsErrorEventTD = {
             "timestamp": datetime.now(ZoneInfo("Asia/Seoul")).isoformat(),
             "version": ERROR_SCHEMA_VERSION,
             "type": "error",
@@ -156,7 +141,7 @@ def handle_exchange_exceptions(
     req_type_attr: str,
     symbols_attr: str,
     exception_mapping: dict[type[Exception], type[ExchangeException]] | None = None,
-    return_as_dict: bool = True,
+    publisher: PublisherFn | None = None,
 ) -> HandleExDecorator:
     """
     거래소 관련 예외 처리를 위한 데코레이터.
@@ -167,7 +152,6 @@ def handle_exchange_exceptions(
         req_type_attr: 인스턴스에서 요청 타입을 읽을 속성명
         symbols_attr: 인스턴스에서 심볼 목록을 읽을 속성명
         exception_mapping: 일반 예외 → 도메인 예외 매핑 딕셔너리
-        return_as_dict: True면 예외를 dict로 반환, False면 도메인 예외를 raise
     """
     # 기본 예외 매핑
     if exception_mapping is None:
@@ -202,12 +186,13 @@ def handle_exchange_exceptions(
 
             except ExchangeException as e:
                 # 에러 이벤트 전송
-                await _publish_ws_error(e.to_dict())
-                if return_as_dict:
-                    return e.to_dict()
+                if publisher is not None:
+                    await publisher(e.to_dict())
+                else:
+                    await _log_ws_error(e.to_dict())
                 raise e
 
-            except (AsyncException, KafkaException) as e:  # 정의된 예외 그룹만 처리
+            except HANDLED_EXCEPTIONS as e:  # 정의된 예외 그룹만 처리
                 # 매핑된 ExchangeException으로 변환 (컨텍스트 포함)
                 exchange_exc: ExchangeException = map_exception(
                     e,
@@ -218,9 +203,10 @@ def handle_exchange_exceptions(
                     mapping=exception_mapping,
                 )
                 # 에러 이벤트 전송
-                await _publish_ws_error(exchange_exc.to_dict())
-                if return_as_dict:
-                    return exchange_exc.to_dict()
+                if publisher is not None:
+                    await publisher(exchange_exc.to_dict())
+                else:
+                    await _log_ws_error(exchange_exc.to_dict())
                 raise exchange_exc
 
             except Exception as e:

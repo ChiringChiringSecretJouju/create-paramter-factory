@@ -1,7 +1,7 @@
 from __future__ import annotations
 from typing import Protocol, runtime_checkable
 from aiokafka import AIOKafkaProducer
-from transport.utils.projection import ProducerConfig
+from common.broker_config import ProducerConfig
 
 
 @runtime_checkable
