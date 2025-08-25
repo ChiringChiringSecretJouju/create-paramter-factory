@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from aiokafka import AIOKafkaProducer
+from typing import Any
 
 from common.serde import to_bytes
 from core.properties import ExchangeService
@@ -20,6 +21,7 @@ from transport.utils.projection import (
     ProducerConfig,
 )
 from transport.di.producer_factory import KafkaProducerFactory, AiokafkaProducerFactory
+from common.exceptions import handle_exchange_exceptions
 
 
 SCHEMA_VERSION = "1.0.0"
@@ -88,7 +90,14 @@ class ConnectMessageBuilder:
         #     msg.expiry_ms = int(expiry_ms)
         return msg
 
-    async def build_from_spec(self, spec: SCMeta) -> ConnectMessageTD:
+    @handle_exchange_exceptions(
+        exchange_name_attr="_exchange_name",
+        region_attr="_region",
+        req_type_attr="_req_type",
+        symbols_attr="_symbols",
+        return_as_dict=True,
+    )
+    async def build_from_spec(self, spec: SCMeta) -> ConnectMessageTD | dict[str, Any]:
         """ConnectSpec를 받아 메시지를 생성합니다.
 
         Args:
@@ -99,16 +108,22 @@ class ConnectMessageBuilder:
             RuntimeError: 구성 생성에 실패한 경우
         """
         print("심볼", spec["symbols"])
+        # 컨텍스트 속성 먼저 세팅 (예외 발생 전 확보)
+        self._exchange_name = spec["target"]["exchange"]
+        self._region = spec["target"]["region"]
+        self._req_type = spec["target"]["request_type"]
+        self._symbols = list(spec["symbols"]) if spec.get("symbols") is not None else []
+
         source: ExchangeMetadata = make_exchange_metadata(
-            region=spec["target"]["region"],
-            exchange=spec["target"]["exchange"],
-            req_type=spec["target"]["request_type"],
+            region=self._region,
+            exchange=self._exchange_name,
+            req_type=self._req_type,
         )
         return await self.build(
             type="status",
             action="connect_and_subscribe",
             source=source,
-            symbols=spec["symbols"],
+            symbols=self._symbols,
             # expiry_ms=spec.expiry_ms,
         )
 
@@ -176,7 +191,14 @@ class AioKafkaConnectProducer:
             (HeaderKey.CONTENT_TYPE.value, b"application/json"),
         ]
 
-    async def produce_connect(self, spec: SCMeta) -> None:
+    @handle_exchange_exceptions(
+        exchange_name_attr="_exchange_name",
+        region_attr="_region",
+        req_type_attr="_req_type",
+        symbols_attr="_symbols",
+        return_as_dict=True,
+    )
+    async def produce_connect(self, spec: SCMeta) -> dict[str, Any] | None:
         """Kafka로 메시지를 전송합니다.
 
         Args:
@@ -188,8 +210,18 @@ class AioKafkaConnectProducer:
         if self._producer is None:
             raise RuntimeError("Producer is not started. Call start() first.")
 
+        # 컨텍스트 속성 먼저 세팅 (예외 발생 전 확보)
+        target = spec["target"]
+        self._exchange_name = target["exchange"]
+        self._region = target["region"]
+        self._req_type = target["request_type"]
+        self._symbols = list(spec["symbols"])
+
         # Connect 메시지 생성
-        msg: ConnectMessageTD = await self._builder.build_from_spec(spec)
+        msg = await self._builder.build_from_spec(spec)
+        # build_from_spec가 데코레이터에 의해 에러 dict를 반환한 경우, 즉시 반환하여 중복 처리 방지
+        if isinstance(msg, dict):
+            return msg
 
         # 메시지 전송
         source: ExchangeMetadata = msg["target"]

@@ -5,6 +5,7 @@ import json
 from dataclasses import dataclass
 from functools import wraps
 from datetime import datetime
+from zoneinfo import ZoneInfo
 from typing import Any, Awaitable, Callable, ParamSpec, Sequence, TypeVar, TypeAlias
 
 from aiokafka import AIOKafkaProducer
@@ -206,7 +207,7 @@ def handle_exchange_exceptions(
                     return e.to_dict()
                 raise e
 
-            except AsyncException + KafkaException as e:  # 정의된 예외 그룹만 처리
+            except (AsyncException, KafkaException) as e:  # 정의된 예외 그룹만 처리
                 # 매핑된 ExchangeException으로 변환 (컨텍스트 포함)
                 exchange_exc: ExchangeException = map_exception(
                     e,
