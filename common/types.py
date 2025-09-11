@@ -31,6 +31,7 @@ class ExchangeMetadata(TypedDict):
 
     region: str
     exchange: str
+    symbols: list[str]
     request_type: str
 
 
@@ -40,7 +41,6 @@ class WsErrorEventTD(TypedDict):
     version: str
     type: str
     source: ExchangeMetadata
-    symbols: list[str]
     error: str
     error_type: str
     original_error: NotRequired[str]

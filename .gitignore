@@ -208,3 +208,4 @@ __marimo__/
 setting/config/urls.conf
 setting/config/kafka_config.conf
 .vscode
+dev.py

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-from typing import Any
-
 from aiokafka import AIOKafkaProducer
 
 from common.broker_config import ProducerConfig, load_kafka_config
