@@ -38,3 +38,23 @@ korbit:
     - low
     - volume
     - quoteVolume
+
+binance:  
+  parameter:
+    - s          
+    - E          
+    - c          
+    - h          
+    - l          
+    - v          
+    - q          
+
+okx:  
+  parameter:
+    - instId     
+    - ts         
+    - last       
+    - high24h
+    - low24h
+    - vol24h     
+    - volCcy24h

@@ -6,6 +6,7 @@ from core.socket_params.market.korea import (
     KorbitSocketParameter,
     CoinoneSocketParameter,
 )
+from core.socket_params.market.asia import BinanceSocketParameter
 
 
 class SocketParameterFactory:
@@ -20,6 +21,7 @@ class SocketParameterFactory:
         "bithumb": BithumbSocketParameter,
         "korbit": KorbitSocketParameter,
         "coinone": CoinoneSocketParameter,
+        "binance": BinanceSocketParameter,
     }
 
     @classmethod

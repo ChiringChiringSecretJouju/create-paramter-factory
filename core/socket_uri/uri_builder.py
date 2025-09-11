@@ -1,6 +1,6 @@
 import configparser
 from pathlib import Path
-from core.types import AllMarketURLs, KoreaRegionURLs
+from core.types import AllMarketURLs, KoreaRegionURLs, AsiaRegionURLs
 from common.exceptions import (
     RegionNotRegisteredException,
     MarketNotRegisteredException,
@@ -42,7 +42,10 @@ class ExchangeURLManager:
                 bithumb=self.parser.get(f"{uri_type}URL", "BITHUMB"),
                 korbit=self.parser.get(f"{uri_type}URL", "KORBIT"),
                 coinone=self.parser.get(f"{uri_type}URL", "COINONE"),
-            )
+            ),
+            asia=AsiaRegionURLs(
+                binance=self.parser.get(f"{uri_type}URL", "BINANCE"),
+            ),
         )
 
     def get_symbol_collect_url(self, market: str, location: str, url_type: str) -> str:

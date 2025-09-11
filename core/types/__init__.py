@@ -1,6 +1,7 @@
 from ._core_type import (
     SocketRequestType,
     KoreaRegionURLs,
+    AsiaRegionURLs,
     AllMarketURLs,
     SocketConnectMetaData,
 )
@@ -8,6 +9,7 @@ from ._core_type import (
 __all__ = [
     "SocketRequestType",
     "KoreaRegionURLs",
+    "AsiaRegionURLs",
     "AllMarketURLs",
     "SocketConnectMetaData",
 ]

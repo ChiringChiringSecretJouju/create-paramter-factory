@@ -267,9 +267,7 @@ def handle_exchange_exceptions(
 
             except Exception as e:
                 # 심각한 예외는 로깅하고 다시 발생
-                logger.critical(
-                    f"Critical error in {exchange_name}: {str(e)}", exc_info=e
-                )
+                logger.critical(f"Critical error in {exchange_name}: {str(e)}")
                 raise  # 처리되지 않은 예외는 상위로 전파
 
         return wrapper
