@@ -6,7 +6,6 @@ upbit:
     - high_price
     - low_price
     - acc_trade_volume_24h
-    - acc_trade_price_24h
 
 bithumb:
   parameter:
@@ -16,7 +15,6 @@ bithumb:
     - high_price
     - low_price
     - acc_trade_volume_24h
-    - acc_trade_price_24h
 
 coinone:
   parameter:
@@ -27,7 +25,6 @@ coinone:
     - high
     - low
     - target_volume
-    - quote_volume
 
 korbit:
   parameter:
@@ -37,24 +34,85 @@ korbit:
     - high
     - low
     - volume
-    - quoteVolume
 
-binance:  
-  parameter:
-    - s          
-    - E          
-    - c          
-    - h          
-    - l          
-    - v          
-    - q          
 
-okx:  
+binance:
   parameter:
-    - instId     
-    - ts         
-    - last       
+    - s           # symbol
+    - E           # event_time (ms)
+    - c           # last_price
+    - h           # high_price_24h
+    - l           # low_price_24h
+    - v           # volume_24h (base)
+
+coinbase:
+  parameter:
+    - product_id      # symbol
+    - time            # ISO8601
+    - price           # last_price
+    - high_24h
+    - low_24h
+    - volume_24h      # base volume (24h)
+
+bybit:
+  parameter:
+    - symbol
+    - ts              # timestamp (ms)
+    - lastPrice
+    - highPrice24h
+    - lowPrice24h
+    - volume24h       # base volume
+
+okx:
+  parameter:
+    - instId
+    - ts              # timestamp (ms)
+    - last
     - high24h
     - low24h
-    - vol24h     
-    - volCcy24h
+    - vol24h          # base volume
+
+kraken:
+  parameter:
+    - symbol          # e.g., "BTC/USD"
+    - ts              # serverTime (ms) 또는 수신 시각 사용
+    - last            # last trade price
+    - high            # 24h high
+    - low             # 24h low
+    - vol24h          # 24h volume (base)
+
+gateio:
+  parameter:
+    - currency_pair
+    - time            # epoch (sec)
+    - last
+    - high
+    - low
+    - base_volume     # 24h
+
+deribit:
+  parameter:
+    - instrument_name
+    - timestamp       # ms
+    - last_price
+    - high            # 24h
+    - low             # 24h
+    - volume          # 24h (base)
+
+huobi:
+  parameter:
+    - symbol
+    - ts              # ms
+    - close
+    - high
+    - low
+    - amount          # 24h base volume
+
+bitfinex:
+  parameter:
+    - symbol          # 구독시 pair (예: tBTCUSD)
+    - ts              # 서버 타임 없음 → 수신 시각 기록 권장
+    - last_price
+    - high            # 24h
+    - low             # 24h
+    - volume          # 24h (base)

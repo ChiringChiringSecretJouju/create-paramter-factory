@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from aiokafka import AIOKafkaProducer
 
-from common.broker_config import ProducerConfig, load_kafka_config
+from common.broker_config import ProducerConfig
 from common.exceptions import handle_exchange_exceptions
 from common.serde import to_bytes
 from common.types import ExchangeSocketConfig
@@ -162,7 +162,7 @@ class AioKafkaConnectProducer:
         producer_factory: KafkaProducerFactory | None = None,
     ) -> None:
         self.topic = topic
-        self.cfg = cfg or load_kafka_config()
+        self.cfg = cfg or ProducerConfig()
         self._producer: AIOKafkaProducer | None = None
         self._builder = ConnectMessageBuilder()
         self._producer_factory: KafkaProducerFactory = (

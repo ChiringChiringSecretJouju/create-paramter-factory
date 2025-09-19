@@ -17,12 +17,28 @@ class KoreaRegionURLs(TypedDict):
 
 class AsiaRegionURLs(TypedDict):
     binance: str
+    # TODO: URL 설정 파일에 추가 필요
+    # bybit: str
+    # okx: str  
+    # huobi: str
+    # gateio: str
+
+
+class EuropeRegionURLs(TypedDict):
+    bitfinex: str
+
+
+class NorthAmericaRegionURLs(TypedDict):
+    coinbase: str
+    kraken: str
 
 
 # 전체 URL 구조 정의
 class AllMarketURLs(TypedDict):
     korea: KoreaRegionURLs
     asia: AsiaRegionURLs
+    europe: EuropeRegionURLs
+    north_america: NorthAmericaRegionURLs
 
 
 @dataclass(frozen=True, slots=True)

@@ -2,12 +2,12 @@ from __future__ import annotations
 
 from aiokafka import AIOKafkaProducer
 
-from common.broker_config import load_kafka_config
+from common.broker_config import ProducerConfig
 from common.serde import to_bytes
 from common.types import WsErrorEventTD
 
 ERROR_TOPIC = "ws.error"
-_cfg = load_kafka_config()
+_cfg = ProducerConfig()
 
 
 def _make_key(payload: WsErrorEventTD) -> bytes:

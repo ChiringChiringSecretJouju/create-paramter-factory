@@ -6,7 +6,18 @@ from core.socket_params.market.korea import (
     KorbitSocketParameter,
     CoinoneSocketParameter,
 )
-from core.socket_params.market.asia import BinanceSocketParameter
+from core.socket_params.market.asia import (
+    BinanceSocketParameter,
+    BybitSocketParameter,
+    OKXSocketParameter,
+    HuobiSocketParameter,
+    GateIOSocketParameter,
+)
+from core.socket_params.market.europe import BitfinexSocketParameter
+from core.socket_params.market.north_america import (
+    CoinbaseSocketParameter,
+    KrakenSocketParameter,
+)
 
 
 class SocketParameterFactory:
@@ -21,7 +32,17 @@ class SocketParameterFactory:
         "bithumb": BithumbSocketParameter,
         "korbit": KorbitSocketParameter,
         "coinone": CoinoneSocketParameter,
+        # 아시아 지역
         "binance": BinanceSocketParameter,
+        "bybit": BybitSocketParameter,
+        "okx": OKXSocketParameter,
+        "huobi": HuobiSocketParameter,
+        "gateio": GateIOSocketParameter,
+        # 유럽 지역
+        "bitfinex": BitfinexSocketParameter,
+        # 북미 지역
+        "coinbase": CoinbaseSocketParameter,
+        "kraken": KrakenSocketParameter,
     }
 
     @classmethod

@@ -1,21 +1,20 @@
 from __future__ import annotations
-from typing import Protocol, runtime_checkable
+from abc import ABC, abstractmethod
 from aiokafka import AIOKafkaProducer
 from common.broker_config import ProducerConfig
 
 
-@runtime_checkable
-class KafkaProducerFactory(Protocol):
+class KafkaProducerFactory(ABC):
     """Kafka 프로듀서 인스턴스를 생성하는 팩토리 인터페이스.
 
     DI, 테스팅, 그리고 관찰성 래퍼를 위한 프로듀서 생성을 추상화합니다.
     """
 
-    # pragma: no cover - type contract
+    @abstractmethod
     def create(self, cfg: ProducerConfig) -> AIOKafkaProducer: ...
 
 
-class AiokafkaProducerFactory:
+class AiokafkaProducerFactory(KafkaProducerFactory):
     """ProducerConfig로부터 AIOKafkaProducer를 생성하는 기본 팩토리."""
 
     def create(self, cfg: ProducerConfig) -> AIOKafkaProducer:

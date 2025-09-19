@@ -1,0 +1,32 @@
+# Huobi (HTX) 웹소켓 API 템플릿
+# 참고 문서: https://huobiapi.github.io/docs/spot/v1/en/
+
+_common: &BASE
+  id: "{req_id}"
+
+_common_unsub: &BASE_UNSUB
+  id: "{req_id}"
+
+ticker:
+  <<: *BASE
+  sub: "{huobi_ticker_topics}"  # 예시 값: "market.btcusdt.ticker"
+  # 참고: Huobi는 market.{symbol}.ticker 형식으로 ticker 데이터 제공
+
+orderbook:
+  <<: *BASE
+  sub: "{huobi_depth_topics}"  # 예시 값: "market.btcusdt.depth.step0"
+  # 참고: market.{symbol}.depth.step0 형식으로 오더북 데이터 제공
+  # step0: 최고 정밀도, step1-5: 점진적으로 낮은 정밀도
+
+unsubscribe_ticker:
+  <<: *BASE_UNSUB
+  unsub: "{huobi_ticker_topics}"
+
+unsubscribe_orderbook:
+  <<: *BASE_UNSUB
+  unsub: "{huobi_depth_topics}"
+
+# Huobi 웹소켓은 다음 구독 채널도 지원합니다:
+# - market.{symbol}.trade.detail: 실시간 거래 정보
+# - market.{symbol}.kline.{period}: 캔들스틱 차트 데이터
+# - market.{symbol}.bbo: 최고 매수/매도 호가 정보

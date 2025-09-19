@@ -5,7 +5,7 @@ from typing import Any, Sequence
 from aiokafka import AIOKafkaConsumer
 
 from core.types import SocketRequestType
-from common.broker_config import ProducerConfig, load_kafka_config
+from common.broker_config import ProducerConfig
 
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 
@@ -120,7 +120,7 @@ class AioKafkaRequestConsumer:
 
         """
         self._topic = topic
-        self._cfg = cfg or load_kafka_config()
+        self._cfg = cfg or ProducerConfig()
         self._group_id = group_id
         self._consumer: AIOKafkaConsumer | None = None
 

@@ -1,4 +1,5 @@
 # Bybit 웹소켓 API 템플릿
+# 참고 문서: https://bybit-exchange.github.io/docs/v5/websocket/public/ticker
 # 참고 문서: https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook
 
 _common: &BASE

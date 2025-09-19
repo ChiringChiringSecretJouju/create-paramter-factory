@@ -1,0 +1,41 @@
+# Bitfinex 웹소켓 API 템플릿
+# 참고 문서: https://docs.bitfinex.com/docs/ws-public
+
+_common: &BASE
+  event: "subscribe"
+
+_common_unsub: &BASE_UNSUB
+  event: "unsubscribe"
+
+ticker:
+  <<: *BASE
+  channel: "ticker"
+  symbol: "{bitfinex_symbol}"  # 예시 값: "tBTCUSD" (단일 심볼)
+  # 참고: Bitfinex는 ticker 채널을 통해 실시간 가격 정보 제공
+  # 심볼 형식: t{BASE}{QUOTE} (예: tBTCUSD, tETHUSD)
+
+orderbook:
+  <<: *BASE
+  channel: "book"
+  symbol: "{bitfinex_symbol}"  # 예시 값: "tBTCUSD"
+  prec: "P0"  # 정밀도 설정: P0(최고), P1, P2, P3, P4(최저)
+  freq: "F0"  # 빈도 설정: F0(실시간), F1(2초마다)
+  len: "25"   # 오더북 깊이: 25, 100 중 선택
+
+unsubscribe_ticker:
+  <<: *BASE_UNSUB
+  channel: "ticker"
+  symbol: "{bitfinex_symbol}"
+
+unsubscribe_orderbook:
+  <<: *BASE_UNSUB
+  channel: "book"
+  symbol: "{bitfinex_symbol}"
+  prec: "P0"
+  freq: "F0"
+  len: "25"
+
+# Bitfinex 웹소켓은 다음 구독 채널도 지원합니다:
+# - trades: 실시간 거래 정보
+# - candles: 캔들스틱 차트 데이터
+# - status: 플랫폼 상태 정보

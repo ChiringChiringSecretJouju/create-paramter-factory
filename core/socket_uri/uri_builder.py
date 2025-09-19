@@ -1,6 +1,6 @@
 import configparser
 from pathlib import Path
-from core.types import AllMarketURLs, KoreaRegionURLs, AsiaRegionURLs
+from core.types import AllMarketURLs, KoreaRegionURLs, AsiaRegionURLs, EuropeRegionURLs, NorthAmericaRegionURLs
 from common.exceptions import (
     RegionNotRegisteredException,
     MarketNotRegisteredException,
@@ -45,6 +45,13 @@ class ExchangeURLManager:
             ),
             asia=AsiaRegionURLs(
                 binance=self.parser.get(f"{uri_type}URL", "BINANCE"),
+            ),
+            europe=EuropeRegionURLs(
+                bitfinex=self.parser.get(f"{uri_type}URL", "BITFINEX"),
+            ),
+            north_america=NorthAmericaRegionURLs(
+                coinbase=self.parser.get(f"{uri_type}URL", "COINBASE"),
+                kraken=self.parser.get(f"{uri_type}URL", "KRAKEN"),
             ),
         )
 

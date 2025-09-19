@@ -1,0 +1,45 @@
+# Coinbase Exchange 웹소켓 API 템플릿
+# 참고 문서: https://docs.cloud.coinbase.com/exchange/docs/websocket-channels
+
+_common: &BASE
+  type: "subscribe"
+  channels:
+    - "ticker"  # 채널명 - 각 섹션에서 오버라이드됨
+
+_common_unsub: &BASE_UNSUB
+  type: "unsubscribe"
+  channels:
+    - "ticker"  # 채널명 - 각 섹션에서 오버라이드됨
+
+ticker:
+  <<: *BASE
+  channels:
+    - "ticker"
+  product_ids: "{coinbase_products}"  # 예시 값: ["ETH-USD", "BTC-USD"]
+  # 참고: Coinbase는 ticker 채널을 통해 실시간 가격 정보 제공
+
+orderbook:
+  <<: *BASE
+  channels:
+    - "level2"
+  product_ids: "{coinbase_products}"  # 예시 값: ["ETH-USD", "BTC-USD"]
+  # 참고: level2 채널은 전체 오더북 스냅샷과 업데이트를 제공
+
+unsubscribe_ticker:
+  <<: *BASE_UNSUB
+  channels:
+    - "ticker"
+  product_ids: "{coinbase_products}"
+
+unsubscribe_orderbook:
+  <<: *BASE_UNSUB
+  channels:
+    - "level2"
+  product_ids: "{coinbase_products}"
+
+# Coinbase Exchange 웹소켓은 다음 구독 채널도 지원합니다:
+# - matches: 실시간 거래 정보
+# - heartbeat: 연결 상태 확인
+# - status: 시스템 상태 정보
+# - user: 개인 계정 정보 (인증 필요)
+
