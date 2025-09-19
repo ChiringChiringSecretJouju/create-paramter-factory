@@ -17,11 +17,10 @@ class KoreaRegionURLs(TypedDict):
 
 class AsiaRegionURLs(TypedDict):
     binance: str
-    # TODO: URL 설정 파일에 추가 필요
-    # bybit: str
-    # okx: str  
-    # huobi: str
-    # gateio: str
+    bybit: str
+    okx: str
+    huobi: str
+    gateio: str
 
 
 class EuropeRegionURLs(TypedDict):
