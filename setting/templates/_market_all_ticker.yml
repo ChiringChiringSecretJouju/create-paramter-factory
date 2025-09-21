@@ -2,6 +2,7 @@ upbit:
   parameter:
     - code
     - trade_timestamp
+    - opening_price    # 시가
     - trade_price
     - high_price
     - low_price
@@ -11,6 +12,7 @@ bithumb:
   parameter:
     - code
     - timestamp
+    - opening_price    # 시가
     - trade_price
     - high_price
     - low_price
@@ -19,17 +21,18 @@ bithumb:
 coinone:
   parameter:
     - target_currency
-    - quote_currency
     - timestamp
-    - last
+    - first
     - high
     - low
+    - last
     - target_volume
 
 korbit:
   parameter:
     - symbol
     - timestamp
+    - open            # 시가
     - close
     - high
     - low
@@ -40,6 +43,7 @@ binance:
   parameter:
     - s           # symbol
     - E           # event_time (ms)
+    - o           # open price (24h)
     - c           # last_price
     - h           # high_price_24h
     - l           # low_price_24h
@@ -49,6 +53,7 @@ coinbase:
   parameter:
     - product_id      # symbol
     - time            # ISO8601
+    - open_24h       # open price (24h)
     - price           # last_price
     - high_24h
     - low_24h
@@ -58,6 +63,7 @@ bybit:
   parameter:
     - symbol
     - ts              # timestamp (ms)
+    - prevPrice24h    # open proxy (24h open)
     - lastPrice
     - highPrice24h
     - lowPrice24h
@@ -67,6 +73,7 @@ okx:
   parameter:
     - instId
     - ts              # timestamp (ms)
+    - open24h        # open price (24h)
     - last
     - high24h
     - low24h
@@ -75,7 +82,7 @@ okx:
 kraken:
   parameter:
     - symbol          # e.g., "BTC/USD"
-    - ts              # serverTime (ms) 또는 수신 시각 사용
+    - o               # open price (24h)
     - last            # last trade price
     - high            # 24h high
     - low             # 24h low
@@ -90,19 +97,11 @@ gateio:
     - low
     - base_volume     # 24h
 
-deribit:
-  parameter:
-    - instrument_name
-    - timestamp       # ms
-    - last_price
-    - high            # 24h
-    - low             # 24h
-    - volume          # 24h (base)
-
 huobi:
   parameter:
     - symbol
     - ts              # ms
+    - open
     - close
     - high
     - low
@@ -111,7 +110,6 @@ huobi:
 bitfinex:
   parameter:
     - symbol          # 구독시 pair (예: tBTCUSD)
-    - ts              # 서버 타임 없음 → 수신 시각 기록 권장
     - last_price
     - high            # 24h
     - low             # 24h

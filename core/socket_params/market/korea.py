@@ -95,13 +95,12 @@ class CoinoneSocketParameter(SocketParameterCreator):
     def __init__(self):
         super().__init__(exchange="coinone", region="korea")
 
-    def create_parameters(self, symbols: list[str], req_type: str) -> list[dict]:
+    def create_parameters(self, symbols: list[str], req_type: str) -> dict:
         """코인원 전용 파라미터 생성 (심볼당 1요청)."""
         if req_type not in self.template:
             raise ValueError(f"지원하지 않는 요청 타입: {req_type}")
 
         template = dict(self.template[req_type])
-
         return self._create_single_parameter(template, symbols[0])
 
     def _create_single_parameter(self, template: dict, symbol: str) -> dict:

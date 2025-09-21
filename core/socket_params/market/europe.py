@@ -53,18 +53,4 @@ class BitfinexSocketParameter(SocketParameterCreator):
         if "_" in symbol:
             base, quote = symbol.split("_", 1)
             return f"t{base.upper()}{quote.upper()}"
-        return f"t{symbol.upper()}"
-
-    def create_multiple_parameters(
-        self, symbols: list[str], req_type: str
-    ) -> list[dict]:
-        """여러 심볼에 대한 파라미터 생성 (Bitfinex는 개별 구독 필요).
-
-        Args:
-            symbols: 심볼 목록
-            req_type: 요청 타입
-
-        Returns:
-            list[dict]: 각 심볼별 파라미터 리스트
-        """
-        return [self.create_parameters([symbol], req_type) for symbol in symbols]
+        return f"t{symbol.upper()}USD"

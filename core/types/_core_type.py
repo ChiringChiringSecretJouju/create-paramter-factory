@@ -36,8 +36,8 @@ class NorthAmericaRegionURLs(TypedDict):
 class AllMarketURLs(TypedDict):
     korea: KoreaRegionURLs
     asia: AsiaRegionURLs
-    europe: EuropeRegionURLs
-    north_america: NorthAmericaRegionURLs
+    eu: EuropeRegionURLs
+    na: NorthAmericaRegionURLs
 
 
 @dataclass(frozen=True, slots=True)

@@ -1,5 +1,7 @@
 # Huobi (HTX) 웹소켓 API 템플릿
-# 참고 문서: https://huobiapi.github.io/docs/spot/v1/en/
+# 참고 문서(신규): https://www.htx.com/en-us/opend/newApiPages
+# 레거시 문서: https://huobiapi.github.io/docs/spot/v1/en/
+# 엔드포인트(Spot WS): wss://api.huobi.pro/ws | wss://api-aws.huobi.pro/ws (AWS 최적화)
 
 _common: &BASE
   id: "{req_id}"

@@ -56,10 +56,10 @@ class ExchangeURLManager:
                 huobi=self.parser.get(f"{uri_type}URL", "HUOBI"),
                 gateio=self.parser.get(f"{uri_type}URL", "GATEIO"),
             ),
-            europe=EuropeRegionURLs(
+            eu=EuropeRegionURLs(
                 bitfinex=self.parser.get(f"{uri_type}URL", "BITFINEX"),
             ),
-            north_america=NorthAmericaRegionURLs(
+            na=NorthAmericaRegionURLs(
                 coinbase=self.parser.get(f"{uri_type}URL", "COINBASE"),
                 kraken=self.parser.get(f"{uri_type}URL", "KRAKEN"),
             ),
