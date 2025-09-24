@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import asyncio
 import json
+import logging
 from transport.types.message_types import ConnectMessageTD
 from common.logger import PipelineLogger
 from common.exceptions import ExchangeException
@@ -10,6 +11,9 @@ from transport.producer import (
     ConnectMessageBuilder,
 )
 from transport.consumer import AioKafkaRequestConsumer, RequestEnvelope
+
+# Kafka UnknownError 경고 억제
+logging.getLogger("aiokafka.consumer.fetcher").setLevel(logging.ERROR)
 
 
 class ConnectForwarder:
@@ -25,7 +29,7 @@ class ConnectForwarder:
     def __init__(self) -> None:
         self.consumer = AioKafkaRequestConsumer(
             topic="ws.command",
-            group_id="create-parameter-factory-consumer",
+            group_id="parameter_factory_consumer",
         )
         self.builder = ConnectMessageBuilder()
         self.producer = AioKafkaConnectProducer(topic="ws.status")
@@ -91,22 +95,34 @@ class ConnectForwarder:
         await self.producer.produce_connect(msg)
 
     async def run(self) -> None:
-        """컨슈머를 실행하여 레코드를 소비하고 메시지를 전달합니다.
-
-        Args:
-            None
-
-        Returns:
-            None
-        """
-        await self.consumer.start()
-        await self.producer.start()
+        """컨슈머를 실행하여 레코드를 소비하고 메시지를 전달합니다."""
         try:
+            await self.consumer.start()
+            self.logger.info("Consumer started successfully")
+        except Exception as e:
+            self.logger.error(f"Failed to start consumer: {e}")
+            raise
+
+        try:
+            await self.producer.start()
+            self.logger.info("Producer started successfully")
+        except Exception as e:
+            self.logger.error(f"Failed to start producer: {e}")
+            await self.consumer.stop()
+            raise
+
+        try:
+            self.logger.info("Starting message consumption loop...")
+            message_count = 0
+
             async for record in self.consumer:
+                message_count += 1
+                self.logger.info(f"Record #{message_count} received: {record.value}")
+
                 try:
                     await self.handle_record(record.value)
                     self.logger.info(
-                        f"Record processed successfully. parameter sending to kafka --> {record.value}"
+                        f"Record #{message_count} processed successfully. parameter sending to kafka --> {record.value}"
                     )
                 except ExchangeException as e:
                     # ws.error 퍼블리시는 상위 데코레이터에서 이미 수행됨. 여기서는 계속 진행.
@@ -122,9 +138,16 @@ class ConnectForwarder:
                         exchange="",
                     )
                     continue
+        except KeyboardInterrupt:
+            self.logger.info("Received keyboard interrupt, shutting down...")
+        except Exception as e:
+            self.logger.error(f"Consumer loop error: {e}")
+            # Kafka 연결 문제인 경우 재시도 로직 추가 가능
         finally:
+            self.logger.info("Stopping consumer and producer...")
             await self.consumer.stop()
             await self.producer.stop()
+            self.logger.info("Shutdown complete")
 
 
 def main() -> None:

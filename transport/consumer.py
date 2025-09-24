@@ -1,8 +1,12 @@
 from __future__ import annotations
 
+import asyncio
+import threading
+import queue
 from typing import Any, Sequence
+from concurrent.futures import ThreadPoolExecutor
 
-from aiokafka import AIOKafkaConsumer
+from confluent_kafka import Consumer, KafkaError, Message
 
 from core.types import SocketRequestType
 from common.broker_config import ProducerConfig
@@ -89,8 +93,21 @@ class RequestEnvelope(BaseModel):
         return RequestEnvelope.model_validate(payload)
 
 
+class ConfluentKafkaRecord:
+    """confluent-kafka Message를 aiokafka 호환 레코드로 변환하는 래퍼"""
+
+    def __init__(self, message: Message) -> None:
+        self.topic = message.topic()
+        self.partition = message.partition()
+        self.offset = message.offset()
+        self.key = message.key()
+        self.value = message.value()
+        self.headers = message.headers() or []
+        self.timestamp = message.timestamp()
+
+
 class AioKafkaRequestConsumer:
-    """마켓 연결 요청을 소비만 합니다. 메시지 처리는 호출 측에서 수행하세요.
+    """confluent-kafka 기반 비동기 컨슈머 (스레드 + 큐 활용)
 
     입력 JSON 예시:
     {
@@ -117,32 +134,99 @@ class AioKafkaRequestConsumer:
             topic: 구독할 Kafka 토픽 이름
             group_id: 컨슈머 그룹 ID
             cfg: Kafka 설정, None이면 기본값 사용
-
         """
         self._topic = topic
         self._cfg = cfg or ProducerConfig()
         self._group_id = group_id
-        self._consumer: AIOKafkaConsumer | None = None
+        self._consumer: Consumer | None = None
+        self._message_queue: queue.Queue[ConfluentKafkaRecord | None] = queue.Queue()
+        self._executor: ThreadPoolExecutor | None = None
+        self._consumer_thread: threading.Thread | None = None
+        self._running = False
+        self._loop: asyncio.AbstractEventLoop | None = None
+
+    def _create_consumer_config(self) -> dict[str, Any]:
+        """confluent-kafka Consumer 설정을 생성합니다."""
+        return {
+            "bootstrap.servers": self._cfg.bootstrap_servers,
+            "group.id": self._group_id,
+            "auto.offset.reset": "latest",
+            "enable.auto.commit": True,
+            "session.timeout.ms": 30000,
+            "heartbeat.interval.ms": 10000,
+        }
+
+    def _consumer_worker(self) -> None:
+        """별도 스레드에서 실행되는 컨슈머 워커"""
+        try:
+            consumer = Consumer(self._create_consumer_config())
+            consumer.subscribe([self._topic])
+
+            while self._running:
+                try:
+                    msg = consumer.poll(timeout=1.0)
+                    if msg is None:
+                        continue
+
+                    if msg.error():
+                        if msg.error().code() == KafkaError._PARTITION_EOF:
+                            continue
+                        else:
+                            print(f"Consumer error: {msg.error()}")
+                            continue
+
+                    # 메시지를 큐에 추가
+                    record = ConfluentKafkaRecord(msg)
+                    self._message_queue.put(record)
+
+                except Exception as e:
+                    print(f"Error in consumer worker: {e}")
+
+        except Exception as e:
+            print(f"Failed to create consumer: {e}")
+        finally:
+            try:
+                consumer.close()
+            except:
+                pass
+            # 종료 신호를 큐에 추가
+            self._message_queue.put(None)
 
     async def start(self) -> None:
         """Kafka 컨슈머를 시작합니다."""
-        if self._consumer is not None:
+        if self._running:
             return
-        self._consumer = AIOKafkaConsumer(
-            self._topic,
-            bootstrap_servers=self._cfg.bootstrap_servers,
-            group_id=self._group_id,
-            enable_auto_commit=True,
-            value_deserializer=lambda v: v,
-            key_deserializer=lambda v: v,
+
+        self._running = True
+        self._loop = asyncio.get_running_loop()
+        self._executor = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="kafka-consumer"
         )
-        await self._consumer.start()
+
+        # 컨슈머 스레드 시작
+        self._consumer_thread = threading.Thread(
+            target=self._consumer_worker, name="kafka-consumer-thread", daemon=True
+        )
+        self._consumer_thread.start()
 
     async def stop(self) -> None:
         """Kafka 컨슈머를 중지합니다."""
-        if self._consumer is not None:
-            await self._consumer.stop()
-            self._consumer = None
+        if not self._running:
+            return
+
+        self._running = False
+
+        # 스레드 종료 대기
+        if self._consumer_thread and self._consumer_thread.is_alive():
+            self._consumer_thread.join(timeout=5.0)
+
+        # ThreadPoolExecutor 정리
+        if self._executor:
+            self._executor.shutdown(wait=True)
+            self._executor = None
+
+        self._consumer_thread = None
+        self._loop = None
 
     def __aiter__(self):
         """비동기 이터레이터 프로토콜을 구현합니다.
@@ -150,7 +234,7 @@ class AioKafkaRequestConsumer:
         Returns:
             AsyncIterator: 비동기 이터레이터 객체
         """
-        if self._consumer is None:
+        if not self._running:
             raise RuntimeError("consumer not started")
         return self._iterate()
 
@@ -160,9 +244,24 @@ class AioKafkaRequestConsumer:
         Returns:
             AsyncGenerator: Kafka 레코드를 생성하는 제너레이터
         """
-        assert self._consumer is not None
-        async for record in self._consumer:
-            yield record
+        while self._running:
+            try:
+                # 큐에서 메시지 대기 (타임아웃 1초)
+                try:
+                    record = self._message_queue.get(timeout=1.0)
+                except queue.Empty:
+                    # 타임아웃은 정상적인 상황 (메시지가 없을 때)
+                    continue
+
+                # None은 종료 신호
+                if record is None:
+                    break
+
+                yield record
+
+            except Exception as e:
+                print(f"Error in consumer iteration: {e}")
+                break
 
     # async def run(self) -> None:
     #     """컨슈머를 실행하여 메시지를 소비합니다"""

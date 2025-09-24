@@ -1,0 +1,105 @@
+{
+  "type": "record",
+  "name": "ConnectCommand",
+  "namespace": "com.chiringchiring.websocket.command",
+  "doc": "WebSocket 연결 및 구독 명령 스키마",
+  "fields": [
+    {
+      "name": "type",
+      "type": "string",
+      "doc": "명령 타입 (예: command)",
+      "default": "command"
+    },
+    {
+      "name": "action",
+      "type": "string",
+      "doc": "수행할 액션 (예: connect_and_subscribe)",
+      "default": "connect_and_subscribe"
+    },
+    {
+      "name": "target",
+      "type": {
+        "type": "record",
+        "name": "Target",
+        "doc": "연결 대상 정보",
+        "fields": [
+          {
+            "name": "exchange",
+            "type": "string",
+            "doc": "거래소 이름 (예: upbit, binance, coinbase)"
+          },
+          {
+            "name": "region",
+            "type": "string",
+            "doc": "지역 코드 (예: korea, north_america, europe)"
+          },
+          {
+            "name": "request_type",
+            "type": "string",
+            "doc": "요청 타입 (예: ticker, orderbook, trade)"
+          }
+        ]
+      },
+      "doc": "연결 대상 거래소 및 요청 정보"
+    },
+    {
+      "name": "connection",
+      "type": {
+        "type": "record",
+        "name": "Connection",
+        "doc": "연결 설정 정보",
+        "fields": [
+          {
+            "name": "socket_params",
+            "type": {
+              "type": "record",
+              "name": "SocketParams",
+              "doc": "소켓 연결 파라미터",
+              "fields": [
+                {
+                  "name": "subscribe_type",
+                  "type": "string",
+                  "doc": "구독 타입 (예: ticker, orderbook, trade)"
+                },
+                {
+                  "name": "symbols",
+                  "type": {
+                    "type": "array",
+                    "items": "string"
+                  },
+                  "doc": "구독할 심볼 목록 (예: [\"BTC\", \"ETH\", \"XRP\"])"
+                }
+              ]
+            },
+            "doc": "WebSocket 연결에 필요한 파라미터"
+          }
+        ]
+      },
+      "doc": "WebSocket 연결 설정"
+    },
+    {
+      "name": "correlation_id",
+      "type": ["null", "string"],
+      "doc": "요청 추적을 위한 상관관계 ID (선택적)",
+      "default": null
+    },
+    {
+      "name": "timestamp",
+      "type": ["null", "long"],
+      "doc": "요청 생성 시간 (Unix timestamp, milliseconds)",
+      "default": null
+    },
+    {
+      "name": "metadata",
+      "type": [
+        "null",
+        {
+          "type": "map",
+          "values": "string"
+        }
+      ],
+      "doc": "추가 메타데이터 (선택적)",
+      "default": null
+    }
+  ]
+}

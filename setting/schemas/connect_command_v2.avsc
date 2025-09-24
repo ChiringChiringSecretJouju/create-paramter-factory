@@ -1,0 +1,190 @@
+{
+  "type": "record",
+  "name": "ConnectCommandV2",
+  "namespace": "com.chiringchiring.websocket.command.v2",
+  "doc": "WebSocket 연결 및 구독 명령 스키마 (확장 버전)",
+  "fields": [
+    {
+      "name": "type",
+      "type": {
+        "type": "enum",
+        "name": "CommandType",
+        "symbols": ["command", "control", "status"]
+      },
+      "doc": "명령 타입",
+      "default": "command"
+    },
+    {
+      "name": "action",
+      "type": {
+        "type": "enum",
+        "name": "ActionType",
+        "symbols": [
+          "connect_and_subscribe",
+          "disconnect",
+          "subscribe",
+          "unsubscribe",
+          "heartbeat"
+        ]
+      },
+      "doc": "수행할 액션",
+      "default": "connect_and_subscribe"
+    },
+    {
+      "name": "target",
+      "type": {
+        "type": "record",
+        "name": "TargetV2",
+        "doc": "연결 대상 정보",
+        "fields": [
+          {
+            "name": "exchange",
+            "type": {
+              "type": "enum",
+              "name": "ExchangeType",
+              "symbols": [
+                "upbit", "bithumb", "coinone", "korbit",
+                "binance", "bybit", "okx", "gateio",
+                "coinbase", "kraken",
+                "huobi", "bitfinex"
+              ]
+            },
+            "doc": "거래소 이름"
+          },
+          {
+            "name": "region",
+            "type": {
+              "type": "enum",
+              "name": "RegionType",
+              "symbols": ["korea", "north_america", "europe", "asia", "global"]
+            },
+            "doc": "지역 코드"
+          },
+          {
+            "name": "request_type",
+            "type": {
+              "type": "enum",
+              "name": "RequestType",
+              "symbols": ["ticker", "orderbook", "trade", "candle", "balance"]
+            },
+            "doc": "요청 타입"
+          }
+        ]
+      },
+      "doc": "연결 대상 거래소 및 요청 정보"
+    },
+    {
+      "name": "connection",
+      "type": {
+        "type": "record",
+        "name": "ConnectionV2",
+        "doc": "연결 설정 정보",
+        "fields": [
+          {
+            "name": "socket_params",
+            "type": {
+              "type": "record",
+              "name": "SocketParamsV2",
+              "doc": "소켓 연결 파라미터",
+              "fields": [
+                {
+                  "name": "subscribe_type",
+                  "type": {
+                    "type": "enum",
+                    "name": "SubscribeType",
+                    "symbols": ["ticker", "orderbook", "trade", "candle", "balance"]
+                  },
+                  "doc": "구독 타입"
+                },
+                {
+                  "name": "symbols",
+                  "type": {
+                    "type": "array",
+                    "items": "string"
+                  },
+                  "doc": "구독할 심볼 목록"
+                },
+                {
+                  "name": "depth",
+                  "type": ["null", "int"],
+                  "doc": "오더북 깊이 (orderbook 타입에서 사용)",
+                  "default": null
+                },
+                {
+                  "name": "interval",
+                  "type": ["null", "string"],
+                  "doc": "캔들 간격 (candle 타입에서 사용, 예: 1m, 5m, 1h)",
+                  "default": null
+                }
+              ]
+            },
+            "doc": "WebSocket 연결에 필요한 파라미터"
+          },
+          {
+            "name": "options",
+            "type": [
+              "null",
+              {
+                "type": "record",
+                "name": "ConnectionOptions",
+                "fields": [
+                  {
+                    "name": "auto_reconnect",
+                    "type": "boolean",
+                    "doc": "자동 재연결 여부",
+                    "default": true
+                  },
+                  {
+                    "name": "heartbeat_interval",
+                    "type": ["null", "int"],
+                    "doc": "하트비트 간격 (초)",
+                    "default": null
+                  },
+                  {
+                    "name": "timeout",
+                    "type": ["null", "int"],
+                    "doc": "연결 타임아웃 (초)",
+                    "default": null
+                  }
+                ]
+              }
+            ],
+            "doc": "연결 옵션 (선택적)",
+            "default": null
+          }
+        ]
+      },
+      "doc": "WebSocket 연결 설정"
+    },
+    {
+      "name": "correlation_id",
+      "type": ["null", "string"],
+      "doc": "요청 추적을 위한 상관관계 ID (선택적)",
+      "default": null
+    },
+    {
+      "name": "timestamp",
+      "type": "long",
+      "doc": "요청 생성 시간 (Unix timestamp, milliseconds)",
+      "logicalType": "timestamp-millis"
+    },
+    {
+      "name": "version",
+      "type": "string",
+      "doc": "스키마 버전",
+      "default": "2.0.0"
+    },
+    {
+      "name": "metadata",
+      "type": [
+        "null",
+        {
+          "type": "map",
+          "values": "string"
+        }
+      ],
+      "doc": "추가 메타데이터 (선택적)",
+      "default": null
+    }
+  ]
+}

@@ -210,3 +210,4 @@ setting/config/kafka_config.conf
 .vscode
 dev.py
 .windsurfrules
+logs/
