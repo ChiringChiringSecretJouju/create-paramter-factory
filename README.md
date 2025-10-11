@@ -29,9 +29,13 @@
   - 목적: 레이어 간 순환 의존 제거 및 횡단 관심사의 공용화.
 
 ## 2) 현재 지원 현황(Where) 및 로드맵
-- 현재 국가/거래소
-  - korea: `upbit`, `bithumb`, `korbit`, `coinone`
-- 로드맵(추가 예정)
+- **현재 지원 거래소 (총 15개)**
+  - **korea (한국)**: `upbit`, `bithumb`, `korbit`, `coinone`, `gopax`
+  - **asia (아시아)**: `binance`, `bybit`, `okx`, `huobi`, `gateio`, `mexc`
+  - **europe (유럽)**: `bitfinex`
+  - **north_america (북미)**: `coinbase`, `kraken`
+  
+- **확장 방법**
   - 기타 지역/거래소 확장 시 `setting/templates/socket_templates/{region}/{exchange}.yml` 파일만 추가하면 코드 수정 없이 동작
 
 ## 3) 동작 방식(How)
@@ -76,6 +80,33 @@
     )
     all_cfgs = svc.get_all_exchange_configs(spec)
     # all_cfgs: dict[str, ExchangeSocketConfig]
+    ```
+
+  - **신규 거래소 사용 예시 (MEXC, Gopax)**:
+    ```python
+    from core.properties import ExchangeService
+
+    svc = ExchangeService()
+    
+    # MEXC (글로벌 거래소, 아시아 지역)
+    mexc_cfg = svc.get_exchange_config(
+        exchange="mexc",
+        symbols=["BTC", "ETH"],
+        req_type="ticker",
+        region="asia",
+    )
+    # 생성된 파라미터 예시:
+    # {"method": "SUBSCRIPTION", "params": ["spot@public.miniTicker.v3.api@BTCUSDT@UTC+8", "spot@public.miniTicker.v3.api@ETHUSDT@UTC+8"]}
+    
+    # Gopax (한국 거래소)
+    gopax_cfg = svc.get_exchange_config(
+        exchange="gopax",
+        symbols=["BTC"],
+        req_type="orderbook",
+        region="korea",
+    )
+    # 생성된 파라미터 예시:
+    # {"type": "subscribe", "channel": "orderbook", "market": "BTC-KRW"}
     ```
 
 ## 4) 테스트 결과(Test)

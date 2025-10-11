@@ -315,3 +315,62 @@ class GateIOSocketParameter(SocketParameterCreator):
         """
         # Gate.io는 언더스코어 형식 그대로 사용
         return f"{symbol.upper()}USDT"
+
+
+class MEXCSocketParameter(SocketParameterCreator):
+    """MEXC 거래소 파라미터 생성기.
+
+    MEXC WebSocket API v3 사용
+    심볼 형식: BTCUSDT (대문자 연결)
+    공통 프리픽스: spot@public
+    채널 형식:
+        - Ticker: spot@public.miniTicker.v3.api@{symbol}@UTC+8
+        - Orderbook: spot@public.limit.depth.v3.api@{symbol}@20
+    메서드: SUBSCRIPTION / UNSUBSCRIPTION
+    공식 문서: https://www.mexc.com/api-docs/spot-v3/websocket-market-streams
+    """
+
+    def __init__(self) -> None:
+        super().__init__(exchange="mexc", region="asia")
+
+    def create_parameters(self, symbols: list[str], req_type: str) -> dict:
+        """MEXC 전용 파라미터 생성.
+
+        Args:
+            symbols: 심볼 목록 (예: ["BTC_USDT", "ETH_USDT"])
+            req_type: 요청 타입 (ticker, orderbook 등)
+
+        Returns:
+            dict: 생성된 소켓 파라미터
+
+        Raises:
+            ValueError: 지원하지 않는 요청 타입인 경우
+        """
+        if req_type not in self.template:
+            raise ValueError(f"지원하지 않는 요청 타입: {req_type}")
+
+        result = dict(self.template[req_type])
+
+        # params 플레이스홀더 처리
+        if "params" in result and len(result["params"]) > 0:
+            # 템플릿의 첫 번째 params를 채널 템플릿으로 사용
+            channel_template = result["params"][0]
+            result["params"] = [
+                channel_template.replace("{symbol}", self._format_symbol(s))
+                for s in symbols
+            ]
+
+        return result
+
+    def _format_symbol(self, symbol: str) -> str:
+        """심볼을 MEXC 형식으로 변환.
+
+        Args:
+            symbol: 표준 심볼 (예: "BTC_USDT" 또는 "BTC")
+
+        Returns:
+            str: MEXC 형식 심볼 (예: "BTCUSDT")
+        """
+        if "_" in symbol:
+            return symbol.replace("_", "").upper()
+        return f"{symbol.upper()}USDT"

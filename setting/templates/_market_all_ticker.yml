@@ -114,3 +114,22 @@ bitfinex:
     - high            # 24h
     - low             # 24h
     - volume          # 24h (base)
+
+mexc:
+  parameter:
+    - symbol
+    - sendTime                      # timestamp
+    - price                         # trade_price (시가 없음)
+    - high
+    - low
+    - quantity                      # acc_trade_volume_24h
+
+gopax:
+  parameter:
+    - tradingPairName
+    - lastTraded         # timestamp
+    - open               # 시가
+    - last               # 현재가
+    - high               # 고가
+    - low                # 저가
+    - baseVolume         # 거래량 24h

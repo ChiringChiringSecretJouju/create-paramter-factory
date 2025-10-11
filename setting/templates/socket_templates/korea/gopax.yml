@@ -1,0 +1,36 @@
+# Gopax 웹소켓 API 템플릿
+# 참고 문서: https://gopax.github.io/wsapi/
+# 엔드포인트: wss://ws.gopax.co.kr/
+
+_common: &BASE
+  type: "subscribe"
+
+_common_unsub: &BASE_UNSUB
+  type: "unsubscribe"
+
+ticker:
+  <<: *BASE
+  channel: "ticker"
+  market: "{gopax_market}"
+
+orderbook:
+  <<: *BASE
+  channel: "orderbook"
+  market: "{gopax_market}"
+
+unsubscribe_ticker:
+  <<: *BASE_UNSUB
+  channel: "ticker"
+  market: "{gopax_market}"
+
+unsubscribe_orderbook:
+  <<: *BASE_UNSUB
+  channel: "orderbook"
+  market: "{gopax_market}"
+
+# 참고:
+# 1. Gopax WebSocket 엔드포인트: wss://ws.gopax.co.kr/
+# 2. 메시지 구조: {"type":"subscribe","channel":"ticker","market":"BTC-KRW"}
+# 3. {gopax_market}: 마켓 형식은 BTC-KRW (대문자 하이픈)
+# 4. Snapshot → Delta 업데이트 구조 (orderbook)
+# 5. 한국 KRW 마켓 중심의 거래소

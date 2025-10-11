@@ -48,6 +48,7 @@ class ExchangeURLManager:
                 bithumb=self.parser.get(f"{uri_type}URL", "BITHUMB"),
                 korbit=self.parser.get(f"{uri_type}URL", "KORBIT"),
                 coinone=self.parser.get(f"{uri_type}URL", "COINONE"),
+                gopax=self.parser.get(f"{uri_type}URL", "GOPAX"),
             ),
             asia=AsiaRegionURLs(
                 binance=self.parser.get(f"{uri_type}URL", "BINANCE"),
@@ -55,6 +56,7 @@ class ExchangeURLManager:
                 okx=self.parser.get(f"{uri_type}URL", "OKX"),
                 huobi=self.parser.get(f"{uri_type}URL", "HUOBI"),
                 gateio=self.parser.get(f"{uri_type}URL", "GATEIO"),
+                mexc=self.parser.get(f"{uri_type}URL", "MEXC"),
             ),
             eu=EuropeRegionURLs(
                 bitfinex=self.parser.get(f"{uri_type}URL", "BITFINEX"),

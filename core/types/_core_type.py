@@ -1,4 +1,4 @@
-from typing import TypedDict, TypeVar, Any, Literal
+from typing import TypedDict, TypeVar, Literal
 from dataclasses import dataclass
 
 
@@ -13,6 +13,7 @@ class KoreaRegionURLs(TypedDict):
     bithumb: str
     korbit: str
     coinone: str
+    gopax: str
 
 
 class AsiaRegionURLs(TypedDict):
@@ -21,6 +22,7 @@ class AsiaRegionURLs(TypedDict):
     okx: str
     huobi: str
     gateio: str
+    mexc: str
 
 
 class EuropeRegionURLs(TypedDict):
