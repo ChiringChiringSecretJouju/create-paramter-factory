@@ -117,17 +117,19 @@ class CoinoneSocketParameter(SocketParameterCreator):
 
 class GopaxSocketParameter(SocketParameterCreator):
     """Gopax 거래소 파라미터 생성기.
-    
-    Gopax WebSocket API는 단일 구독 방식 사용
+
+    Gopax WebSocket API 특징:
+    - Ticker: 전체 티커 일괄 구독 (symbols 무시)
+    - Orderbook: tradingPairNames 배열로 다중 심볼 구독 가능
     심볼 형식: BTC-KRW (대문자 하이픈)
-    채널: ticker, orderbook
+    메시지 형식: {"n": "SubscribeToTickers", "o": {...}}
     """
 
     def __init__(self):
         super().__init__(exchange="gopax", region="korea")
 
     def create_parameters(self, symbols: list[str], req_type: str) -> dict:
-        """Gopax 전용 파라미터 생성 (심볼당 1요청).
+        """Gopax 전용 파라미터 생성.
 
         Args:
             symbols: 심볼 목록 (예: ["BTC", "ETH"])
@@ -142,24 +144,19 @@ class GopaxSocketParameter(SocketParameterCreator):
         if req_type not in self.template:
             raise ValueError(f"지원하지 않는 요청 타입: {req_type}")
 
-        template = dict(self.template[req_type])
-        return self._create_single_parameter(template, symbols[0])
+        result = dict(self.template[req_type])
 
-    def _create_single_parameter(self, template: dict, symbol: str) -> dict:
-        """단일 심볼 요청 파라미터 생성.
+        # ticker는 전체 구독이므로 템플릿 그대로 반환
+        if req_type in ("ticker", "unsubscribe_ticker"):
+            return result
 
-        Args:
-            template: YAML 템플릿
-            symbol: 심볼 (예: "BTC")
-
-        Returns:
-            dict: 생성된 파라미터
-        """
-        result = dict(template)
-
-        # market 플레이스홀더 처리
-        if "market" in result and result["market"] == "{gopax_market}":
-            result["market"] = self._format_symbol(symbol)
+        # orderbook의 경우 tradingPairNames 플레이스홀더 처리
+        if "o" in result and isinstance(result["o"], dict):
+            if "tradingPairNames" in result["o"]:
+                # 플레이스홀더 리스트를 실제 심볼 리스트로 교체
+                result["o"]["tradingPairNames"] = [
+                    self._format_symbol(s) for s in symbols
+                ]
 
         return result
 
