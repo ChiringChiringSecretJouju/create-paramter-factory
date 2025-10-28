@@ -13,7 +13,7 @@ class KoreaRegionURLs(TypedDict):
     bithumb: str
     korbit: str
     coinone: str
-    gopax: str
+    # gopax: str
 
 
 class AsiaRegionURLs(TypedDict):
@@ -22,7 +22,7 @@ class AsiaRegionURLs(TypedDict):
     okx: str
     huobi: str
     gateio: str
-    mexc: str
+    # mexc: str
 
 
 class EuropeRegionURLs(TypedDict):

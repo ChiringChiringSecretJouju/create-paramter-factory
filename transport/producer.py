@@ -13,7 +13,7 @@ from common.exceptions import handle_exchange_exceptions
 from common.serde import to_bytes
 from common.types import ExchangeSocketConfig
 from core.properties import ExchangeService
-from transport.di.producer_factory import AiokafkaProducerFactory, KafkaProducerFactory
+from transport.di.producer_factory import KafkaProducerFactory
 from transport.di.ws_error_publisher import publish_ws_error
 from transport.types.headers import HeaderKey, KafkaHeader
 from transport.types.message_types import (
@@ -172,7 +172,9 @@ class AioKafkaConnectProducer:
         self._producer: Producer | None = None
         self._builder = ConnectMessageBuilder()
         # factory는 더 이상 사용하지 않음 (confluent-kafka 직접 사용)
-        self._send_queue: queue.Queue[tuple[str, bytes, bytes, list[tuple[str, bytes]]] | None] = queue.Queue()
+        self._send_queue: queue.Queue[
+            tuple[str, bytes, bytes, list[tuple[str, bytes]]] | None
+        ] = queue.Queue()
         self._executor: ThreadPoolExecutor | None = None
         self._producer_thread: threading.Thread | None = None
         self._running = False
@@ -181,14 +183,25 @@ class AioKafkaConnectProducer:
     def _create_producer_config(self) -> dict[str, Any]:
         """confluent-kafka Producer 설정을 생성합니다."""
         config = {
-            'bootstrap.servers': self.cfg.bootstrap_servers,
-            'acks': str(self.cfg.acks),
-            'linger.ms': self.cfg.linger_ms,
-            'batch.size': self.cfg.max_batch_size,
-            'message.max.bytes': self.cfg.max_request_size,
-            'compression.type': 'lz4',
-            'retries': 3,
-            'retry.backoff.ms': 100,
+            "bootstrap.servers": self.cfg.bootstrap_servers,
+            "acks": str(self.cfg.acks),
+            "enable.idempotence": True,
+            # 코디네이터 지연 리더
+            "request.timeout.ms": 30000,
+            "message.timeout.ms": 180000,
+            "retry.backoff.ms": 200,
+            "reconnect.backoff.ms": 200,
+            "reconnect.backoff.max.ms": 50000,
+            "retries": 3,
+            # 순서보장
+            "max.in.flight.requests.per.connection": 5,
+            # 배치 지연
+            "linger.ms": self.cfg.linger_ms,
+            "batch.size": self.cfg.max_batch_size,
+            "compression.type": "lz4",
+            # 모니터링
+            "client.id": "websocket-connect-producer",
+            "statistics.interval.ms": 100000,
         }
         return config
 
@@ -196,7 +209,7 @@ class AioKafkaConnectProducer:
         """별도 스레드에서 실행되는 프로듀서 워커"""
         try:
             producer = Producer(self._create_producer_config())
-            
+
             while self._running:
                 try:
                     # 큐에서 전송할 메시지 대기 (타임아웃 1초)
@@ -204,35 +217,35 @@ class AioKafkaConnectProducer:
                         send_data = self._send_queue.get(timeout=1.0)
                     except queue.Empty:
                         continue
-                        
+
                     # None은 종료 신호
                     if send_data is None:
                         break
-                        
+
                     topic, key, value, headers = send_data
-                    
+
                     # 메시지 전송
                     producer.produce(
                         topic=topic,
                         key=key,
                         value=value,
                         headers=headers,
-                        callback=self._delivery_callback
+                        callback=self._delivery_callback,
                     )
-                    
+
                     # 주기적으로 flush (배치 처리)
                     producer.poll(0)
-                    
+
                 except Exception as e:
                     print(f"Error in producer worker: {e}")
-                    
+
         except Exception as e:
             print(f"Failed to create producer: {e}")
         finally:
             try:
                 # 남은 메시지 flush
                 producer.flush(timeout=5.0)
-            except:
+            except Exception:
                 pass
 
     def _delivery_callback(self, err: KafkaError | None, msg) -> None:
@@ -245,16 +258,16 @@ class AioKafkaConnectProducer:
         """프로듀서를 시작합니다."""
         if self._running:
             return
-            
+
         self._running = True
         self._loop = asyncio.get_running_loop()
-        self._executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="kafka-producer")
-        
+        self._executor = ThreadPoolExecutor(
+            max_workers=1, thread_name_prefix="kafka-producer"
+        )
+
         # 프로듀서 스레드 시작
         self._producer_thread = threading.Thread(
-            target=self._producer_worker,
-            name="kafka-producer-thread",
-            daemon=True
+            target=self._producer_worker, name="kafka-producer-thread", daemon=True
         )
         self._producer_thread.start()
 
@@ -262,21 +275,21 @@ class AioKafkaConnectProducer:
         """프로듀서를 중지합니다."""
         if not self._running:
             return
-            
+
         self._running = False
-        
+
         # 종료 신호 전송
         self._send_queue.put(None)
-        
+
         # 스레드 종료 대기
         if self._producer_thread and self._producer_thread.is_alive():
             self._producer_thread.join(timeout=5.0)
-            
+
         # ThreadPoolExecutor 정리
         if self._executor:
             self._executor.shutdown(wait=True)
             self._executor = None
-            
+
         self._producer_thread = None
         self._loop = None
 
@@ -307,13 +320,13 @@ class AioKafkaConnectProducer:
         """Connect 메시지를 Kafka로 전송합니다. start() 선행 필요."""
         if not self._running:
             raise RuntimeError("Producer is not started. Call start() first.")
-            
+
         source: ExchangeMetadata = msg["target"]
         topic = f"{self.topic}.{source['region']}"
         key = self._make_key(source)
         value = to_bytes(msg)
         headers = self._make_headers(source)
-        
+
         # 메시지를 큐에 추가
         self._send_queue.put((topic, key, value, headers))
 

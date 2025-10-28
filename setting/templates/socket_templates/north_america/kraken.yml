@@ -25,6 +25,13 @@ orderbook:
     symbol: "{kraken_symbols}"  # 여러 심볼 지원: ["BTC/USD", "ETH/USD"]
     depth: 100  # 오더북 깊이 - 10, 25, 100, 500, 1000 중 선택 가능
 
+trade:
+  <<: *BASE
+  params:
+    channel: "trade"
+    symbol: "{kraken_symbols}"  # 여러 심볼 지원: ["BTC/USD", "ETH/USD"]
+    # 옵션: snapshot: true 설정 시 최근 거래 내역 스냅샷 수신
+
 unsubscribe_ticker:
   <<: *BASE_UNSUB
   params:
@@ -37,6 +44,12 @@ unsubscribe_orderbook:
     channel: "book"
     symbol: "{kraken_symbols}"
     depth: 100
+
+unsubscribe_trade:
+  <<: *BASE_UNSUB
+  params:
+    channel: "trade"
+    symbol: "{kraken_symbols}"
 
 # 참고: 
 # 1. Kraken API v2는 wss://ws.kraken.com/v2 엔드포인트를 사용합니다.

@@ -22,6 +22,12 @@ orderbook:
   freq: "F0"  # 빈도 설정: F0(실시간), F1(2초마다)
   len: "25"   # 오더북 깊이: 25, 100 중 선택
 
+trade:
+  <<: *BASE
+  channel: "trades"
+  symbol: "{bitfinex_symbol}"  # 예시 값: "tBTCUSD"
+  # 참고: trades 채널은 실시간 거래 체결 내역을 제공
+
 unsubscribe_ticker:
   <<: *BASE_UNSUB
   channel: "ticker"
@@ -34,6 +40,11 @@ unsubscribe_orderbook:
   prec: "P0"
   freq: "F0"
   len: "25"
+
+unsubscribe_trade:
+  <<: *BASE_UNSUB
+  channel: "trades"
+  symbol: "{bitfinex_symbol}"
 
 # Bitfinex 웹소켓은 다음 구독 채널도 지원합니다:
 # - trades: 실시간 거래 정보

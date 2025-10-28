@@ -20,6 +20,11 @@ orderbook:
   # 참고: market.{symbol}.depth.step0 형식으로 오더북 데이터 제공
   # step0: 최고 정밀도, step1-5: 점진적으로 낮은 정밀도
 
+trade:
+  <<: *BASE
+  sub: "{huobi_trade_topics}"  # 예시 값: "market.btcusdt.trade.detail"
+  # 참고: market.{symbol}.trade.detail 형식으로 실시간 거래 정보 제공
+
 unsubscribe_ticker:
   <<: *BASE_UNSUB
   unsub: "{huobi_ticker_topics}"
@@ -27,6 +32,10 @@ unsubscribe_ticker:
 unsubscribe_orderbook:
   <<: *BASE_UNSUB
   unsub: "{huobi_depth_topics}"
+
+unsubscribe_trade:
+  <<: *BASE_UNSUB
+  unsub: "{huobi_trade_topics}"
 
 # Huobi 웹소켓은 다음 구독 채널도 지원합니다:
 # - market.{symbol}.trade.detail: 실시간 거래 정보

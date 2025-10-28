@@ -19,6 +19,13 @@ orderbook:
     tradingPairNames:
       - "{gopax_market}"
 
+trade:
+  n: "SubscribeToTrades"
+  o:
+    tradingPairNames:
+      - "{gopax_market}"
+  # 참고: Gopax는 SubscribeToTrades를 통해 실시간 거래 체결 내역 제공
+
 unsubscribe_ticker:
   <<: *BASE_UNSUB
 
@@ -28,10 +35,17 @@ unsubscribe_orderbook:
     tradingPairNames:
       - "{gopax_market}"
 
+unsubscribe_trade:
+  n: "UnsubscribeToTrades"
+  o:
+    tradingPairNames:
+      - "{gopax_market}"
+
 # 참고:
 # 1. Gopax WebSocket 엔드포인트: wss://wsapi.gopax.co.kr
 # 2. Ticker 메시지: {"n": "SubscribeToTickers", "o": {}} (전체 티커 일괄 구독)
 # 3. Orderbook 메시지: {"n": "SubscribeToOrderBooks", "o": {"tradingPairNames": ["BTC-KRW"]}}
-# 4. {gopax_market}: 마켓 형식은 BTC-KRW (대문자 하이픈)
+# 4. Trade 메시지: {"n": "SubscribeToTrades", "o": {"tradingPairNames": ["BTC-KRW"]}}
+# 5. {gopax_market}: 마켓 형식은 BTC-KRW (대문자 하이픈)
 # 5. Ticker는 전체 구독 후 클라이언트 측에서 tradingPairName 필터링
 # 6. Delta 응답 구조: {"i": -1, "n": "TickerEvent", "o": {"BTC-KRW": {...}}}

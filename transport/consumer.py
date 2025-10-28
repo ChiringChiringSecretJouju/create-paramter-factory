@@ -150,10 +150,28 @@ class AioKafkaRequestConsumer:
         return {
             "bootstrap.servers": self._cfg.bootstrap_servers,
             "group.id": self._group_id,
+            # 오프셋/커밋
             "auto.offset.reset": "latest",
             "enable.auto.commit": True,
-            "session.timeout.ms": 30000,
-            "heartbeat.interval.ms": 10000,
+            "auto.commit.interval.ms": 3000,
+            # 세션/하트비트
+            "session.timeout.ms": 45000,
+            "heartbeat.interval.ms": 15000,
+            "max.poll.interval.ms": 900000,
+            # 페치(← librdkafka 키 주의)
+            "fetch.min.bytes": 1,
+            "fetch.wait.max.ms": 500,  # ✅ (Java: fetch.max.wait.ms)
+            "fetch.max.bytes": 52428800,
+            # 안정성/네트워크
+            "socket.timeout.ms": 60000,
+            "reconnect.backoff.ms": 200,
+            "reconnect.backoff.max.ms": 5000,
+            "socket.keepalive.enable": True,
+            # 리밸런스/할당
+            "partition.assignment.strategy": "cooperative-sticky",
+            # 기타
+            "enable.partition.eof": True,
+            "allow.auto.create.topics": False,
         }
 
     def _consumer_worker(self) -> None:

@@ -1,7 +1,7 @@
 # Bybit 웹소켓 API 템플릿
 # 참고 문서: https://bybit-exchange.github.io/docs/v5/websocket/public/ticker
 # 참고 문서: https://bybit-exchange.github.io/docs/v5/websocket/public/orderbook
-
+# 참고 문서: https://bybit-exchange.github.io/docs/v5/websocket/public/trade
 _common: &BASE
   req_id: "{uuid}"  # 요청 ID로 UUID 사용
   op: "subscribe"
@@ -21,6 +21,11 @@ orderbook:
   # 위 형식은 "orderbook.depth.symbol" 구조를 따름 
   # 50은 orderbook depth level을 의미 (5, 50, 500 등 가능)
 
+trade:
+  <<: *BASE
+  args: "{bybit_trades}"  # 예시 값: ["publicTrade.BTCUSDT", "publicTrade.ETHUSDT"]
+  # 참고: Bybit V5 API는 publicTrade 채널을 통해 실시간 거래 정보 제공
+
 unsubscribe_ticker:
   <<: *BASE_UNSUB
   args: "{bybit_tickers}"
@@ -29,7 +34,11 @@ unsubscribe_orderbook:
   <<: *BASE_UNSUB
   args: "{bybit_orderbooks}"
 
+unsubscribe_trade:
+  <<: *BASE_UNSUB
+  args: "{bybit_trades}"
+
 # Bybit 웹소켓은 다음 구독 채널도 지원합니다:
-# - trades: 실시간 거래 정보
+# - publicTrade: 실시간 거래 정보
 # - liquidation: 청산 정보
 # - kline: 캔들스틱 차트 데이터

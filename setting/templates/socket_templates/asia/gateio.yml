@@ -21,6 +21,12 @@ orderbook:
   payload: "{gateio_pairs}"  # 예시 값: ["BTC_USDT", "ETH_USDT"]
   # 참고: spot.order_book 채널은 오더북 변경사항을 실시간으로 제공
 
+trade:
+  <<: *BASE
+  channel: "spot.trades"
+  payload: "{gateio_pairs}"  # 예시 값: ["BTC_USDT", "ETH_USDT"]
+  # 참고: spot.trades 채널은 실시간 거래 정보를 제공
+
 unsubscribe_ticker:
   <<: *BASE_UNSUB
   channel: "spot.tickers"
@@ -29,6 +35,11 @@ unsubscribe_ticker:
 unsubscribe_orderbook:
   <<: *BASE_UNSUB
   channel: "spot.order_book"
+  payload: "{gateio_pairs}"
+
+unsubscribe_trade:
+  <<: *BASE_UNSUB
+  channel: "spot.trades"
   payload: "{gateio_pairs}"
 
 # Gate.io 웹소켓은 다음 구독 채널도 지원합니다:

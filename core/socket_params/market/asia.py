@@ -55,8 +55,10 @@ class BinanceSocketParameter(SocketParameterCreator):
         suffix_map = {
             "ticker": "ticker",
             "orderbook": "depth",
+            "trade": "trade",
             "unsubscribe_ticker": "ticker",
             "unsubscribe_orderbook": "depth",
+            "unsubscribe_trade": "trade",
         }
         return suffix_map.get(req_type, "ticker")
 
@@ -99,12 +101,14 @@ class BybitSocketParameter(SocketParameterCreator):
         orderbook: bool = req_type == "orderbook" and "{bybit_orderbooks}" in str(
             result["args"]
         )
+        trade: bool = req_type == "trade" and "{bybit_trades}" in str(result["args"])
         unsubscribe: bool = "unsubscribe" in req_type
 
         # 심볼 포맷팅
         # fmt: off
         ticker_symbols: list[str] = [f"tickers.{self._format_symbol(s)}" for s in symbols]
         orderbook_symbols: list[str] = [f"orderbook.50.{self._format_symbol(s)}" for s in symbols]
+        trade_symbols: list[str] = [f"publicTrade.{self._format_symbol(s)}" for s in symbols]
 
         # fmt: on
         if "args" in result:
@@ -112,12 +116,16 @@ class BybitSocketParameter(SocketParameterCreator):
                 result["args"] = ticker_symbols
             elif orderbook:
                 result["args"] = orderbook_symbols
+            elif trade:
+                result["args"] = trade_symbols
             elif unsubscribe:
                 # unsubscribe는 subscribe와 동일한 args 사용
                 if "ticker" in req_type:
                     result["args"] = ticker_symbols
                 elif "orderbook" in req_type:
                     result["args"] = orderbook_symbols
+                elif "trade" in req_type:
+                    result["args"] = trade_symbols
 
         return result
 
@@ -183,6 +191,11 @@ class OKXSocketParameter(SocketParameterCreator):
                         {"channel": "books", "instId": self._format_symbol(s)}
                         for s in symbols
                     ]
+                elif channel == "trades":
+                    result["args"] = [
+                        {"channel": "trades", "instId": self._format_symbol(s)}
+                        for s in symbols
+                    ]
 
         return result
 
@@ -236,18 +249,24 @@ class HuobiSocketParameter(SocketParameterCreator):
         # fmt: off
         sub_result_ticker = "sub" in result and "{huobi_ticker_topics}" in str(result["sub"])
         sub_result_orderbook = "sub" in result and "{huobi_depth_topics}" in str(result["sub"])
+        sub_result_trade = "sub" in result and "{huobi_trade_topics}" in str(result["sub"])
         unsub_result_ticker = "unsub" in result and "{huobi_ticker_topics}" in str(result["unsub"])
         unsub_result_orderbook = "unsub" in result and "{huobi_depth_topics}" in str(result["unsub"])
+        unsub_result_trade = "unsub" in result and "{huobi_trade_topics}" in str(result["unsub"])
 
         # fmt: on
         if sub_result_ticker:
             result["sub"] = f"market.{formatted_symbol}.ticker"
         elif sub_result_orderbook:
             result["sub"] = f"market.{formatted_symbol}.depth.step0"
+        elif sub_result_trade:
+            result["sub"] = f"market.{formatted_symbol}.trade.detail"
         elif unsub_result_ticker:
             result["unsub"] = f"market.{formatted_symbol}.ticker"
         elif unsub_result_orderbook:
             result["unsub"] = f"market.{formatted_symbol}.depth.step0"
+        elif unsub_result_trade:
+            result["unsub"] = f"market.{formatted_symbol}.trade.detail"
 
         return result
 

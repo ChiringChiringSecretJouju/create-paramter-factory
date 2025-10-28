@@ -23,6 +23,12 @@ orderbook:
     - "{symbols_lower}@depth"
   id: "{req_id}"
 
+trade:
+  <<: *BASE
+  params:
+    - "{symbols_lower}@trade"
+  id: "{req_id}"
+
 unsubscribe_ticker:
   <<: *BASE_UNSUB
   params:
@@ -35,9 +41,15 @@ unsubscribe_orderbook:
     - "{symbols_lower}@depth"
   id: "{req_id}"
 
+unsubscribe_trade:
+  <<: *BASE_UNSUB
+  params:
+    - "{symbols_lower}@trade"
+  id: "{req_id}"
+
 # 참고:
 # 1. Binance Spot WebSocket 엔드포인트: wss://stream.binance.com:9443/ws
-# 2. 스트림명 예시: btcusdt@ticker, btcusdt@depth
+# 2. 스트림명 예시: btcusdt@ticker, btcusdt@depth, btcusdt@trade
 # 3. {symbols_lower}: 심볼 리스트를 소문자로 변환하여 치환 (예: BTCUSDT → btcusdt)
 # 4. {req_id}: 요청 고유 ID, 파이프라인에서 동적으로 치환
 # 5. params는 리스트로 여러 심볼 동시 구독/해제 가능

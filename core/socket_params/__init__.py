@@ -5,7 +5,7 @@ from core.socket_params.market.korea import (
     BithumbSocketParameter,
     KorbitSocketParameter,
     CoinoneSocketParameter,
-    GopaxSocketParameter,
+    # GopaxSocketParameter,
 )
 from core.socket_params.market.asia import (
     BinanceSocketParameter,
@@ -13,7 +13,7 @@ from core.socket_params.market.asia import (
     OKXSocketParameter,
     HuobiSocketParameter,
     GateIOSocketParameter,
-    MEXCSocketParameter,
+    # MEXCSocketParameter,
 )
 from core.socket_params.market.europe import BitfinexSocketParameter
 from core.socket_params.market.north_america import (
@@ -34,14 +34,14 @@ class SocketParameterFactory:
         "bithumb": BithumbSocketParameter,
         "korbit": KorbitSocketParameter,
         "coinone": CoinoneSocketParameter,
-        "gopax": GopaxSocketParameter,
+        # "gopax": GopaxSocketParameter,
         # 아시아 지역
         "binance": BinanceSocketParameter,
         "bybit": BybitSocketParameter,
         "okx": OKXSocketParameter,
         "huobi": HuobiSocketParameter,
         "gateio": GateIOSocketParameter,
-        "mexc": MEXCSocketParameter,
+        # "mexc": MEXCSocketParameter,
         # 유럽 지역
         "bitfinex": BitfinexSocketParameter,
         # 북미 지역

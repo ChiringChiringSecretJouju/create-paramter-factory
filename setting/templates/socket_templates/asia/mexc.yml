@@ -22,6 +22,12 @@ orderbook:
   params:
     - "spot@public.limit.depth.v3.api.pb@{symbol}@20"
 
+trade:
+  <<: *BASE
+  params:
+    - "spot@public.deals.v3.api.pb@{symbol}"
+  # 참고: MEXC는 spot@public.deals.v3.api.pb 채널을 통해 실시간 거래 체결 정보 제공
+
 unsubscribe_ticker:
   <<: *BASE_UNSUB
   params:
@@ -32,10 +38,16 @@ unsubscribe_orderbook:
   params:
     - "spot@public.limit.depth.v3.api.pb@{symbol}@20"
 
+unsubscribe_trade:
+  <<: *BASE_UNSUB
+  params:
+    - "spot@public.deals.v3.api.pb@{symbol}"
+
 # 참고:
 # 1. MEXC WebSocket 엔드포인트: wss://wbs.mexc.com/ws
 # 2. 메서드: SUBSCRIPTION / UNSUBSCRIPTION
 # 3. 공통 프리픽스: spot@public
 # 4. Ticker 채널: spot@public.miniTicker.v3.api.pb@{SYMBOL}@UTC+8
 # 5. Depth 채널: spot@public.limit.depth.v3.api.pb@{SYMBOL}@20 (5, 10, 20 레벨 지원)
+# 6. Trade 채널: spot@public.deals.v3.api.pb@{SYMBOL} (체결 데이터)
 # 6. 공식 문서: https://www.mexc.com/api-docs/spot-v3/websocket-market-streams

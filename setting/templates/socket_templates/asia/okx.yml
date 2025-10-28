@@ -23,6 +23,13 @@ orderbook:
       channel: "books"  # 400 depth의 오더북 데이터
       instId: "{symbol_upper}-USDT"  # 예: BTC-USDT, ETH-USDT 등 형식으로 변환됨
 
+trade:
+  <<: *BASE
+  args:
+    -
+      channel: "trades"  # 실시간 거래 데이터
+      instId: "{symbol_upper}-USDT"  # 예: BTC-USDT, ETH-USDT 등 형식으로 변환됨
+
 unsubscribe_ticker:
   <<: *BASE_UNSUB
   args:
@@ -35,6 +42,13 @@ unsubscribe_orderbook:
   args:
     -
       channel: "books"
+      instId: "{symbol_upper}-USDT"
+
+unsubscribe_trade:
+  <<: *BASE_UNSUB
+  args:
+    -
+      channel: "trades"
       instId: "{symbol_upper}-USDT"
 
 # 참고: 
