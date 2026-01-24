@@ -231,6 +231,3 @@ class ExchangeService:
         """SocketConnectMetaData 기반 모든 거래소 구성 정보를 반환합니다."""
         return self._config_manager.get_all_exchange_configs_from(spec)
 
-
-# 모듈 전역에서 재사용할 단일 서비스 인스턴스
-_exchange_service = ExchangeService()
