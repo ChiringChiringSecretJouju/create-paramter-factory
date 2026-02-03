@@ -15,7 +15,6 @@ from common.types import (
     AsyncFn,
     AsyncFnWithErrDict,
     HandleExDecorator,
-    ExchangeMetadata,
     WsErrorEventTD,
     P,
     R,

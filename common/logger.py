@@ -1,16 +1,15 @@
 from __future__ import annotations
-import tracemalloc
-
-tracemalloc.start()
-
-from pathlib import Path
 import asyncio
 import logging
 import queue
 import sys
+import tracemalloc
 from datetime import datetime
 from logging.handlers import QueueHandler, QueueListener, TimedRotatingFileHandler
+from pathlib import Path
 from typing import Any
+
+tracemalloc.start()
 
 
 def ensure_file_exists(file_path: str) -> None:

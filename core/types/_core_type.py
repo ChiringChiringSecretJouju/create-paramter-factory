@@ -1,4 +1,4 @@
-from typing import TypedDict, TypeVar, Any, Literal
+from typing import TypedDict, TypeVar, Literal
 from dataclasses import dataclass
 
 

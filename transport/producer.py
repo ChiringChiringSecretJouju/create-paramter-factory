@@ -209,8 +209,13 @@ class AioKafkaConnectProducer:
         if self._producer is None:
             raise RuntimeError("Producer is not started. Call start() first.")
         source: ExchangeMetadata = msg["target"]
+        
+        # Dynamic topic routing based on region
+        region = source.get("region", "").strip().lower()
+        topic = f"ws.status.{region}" if region else self.topic
+
         await self._producer.send_and_wait(
-            topic=self.topic,
+            topic=topic,
             key=self._make_key(source),
             value=to_bytes(msg),
             headers=self._make_headers(source),
