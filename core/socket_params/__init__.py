@@ -8,6 +8,13 @@ from core.socket_params.market.korea import (
 )
 
 
+from core.socket_params.market.asia import (
+    BinanceSocketParameter,
+    OKXSocketParameter,
+    BybitSocketParameter,
+)
+
+
 class SocketParameterFactory:
     """거래소별 소켓 파라미터 생성기 팩토리
 
@@ -20,6 +27,10 @@ class SocketParameterFactory:
         "bithumb": BithumbSocketParameter,
         "korbit": KorbitSocketParameter,
         "coinone": CoinoneSocketParameter,
+        # 아시아 지역
+        "binance": BinanceSocketParameter,
+        "okx": OKXSocketParameter,
+        "bybit": BybitSocketParameter,
     }
 
     @classmethod

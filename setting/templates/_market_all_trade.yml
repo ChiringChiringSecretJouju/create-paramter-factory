@@ -1,0 +1,120 @@
+# =============================================
+# Trade WebSocket Response Projection Fields
+# 각 거래소별 trade 스트림에서 추출할 필드 목록
+# =============================================
+
+# --- 한국 거래소 ---
+# Upbit, Bithumb은 동일한 WebSocket API 구조 사용 (v2.1.5)
+upbit:
+  parameter:
+    - type              # 타입 (trade)
+    - code              # 마켓 코드 (KRW-BTC)
+    - trade_timestamp   # 체결 타임스탬프 (ms)
+    - trade_date        # 체결 일자 (KST)
+    - trade_time        # 체결 시각 (KST)
+    - trade_price       # 체결 가격
+    - trade_volume      # 체결량
+    - ask_bid           # 매수/매도 구분 (ASK/BID)
+    - prev_closing_price  # 전일 종가
+    - change            # 전일 대비 (RISE/EVEN/FALL)
+    - change_price      # 부호 없는 전일 대비 변화량
+    - sequential_id     # 체결 번호 (Unique)
+    - timestamp         # 타임스탬프
+    - stream_type       # 스트림 타입 (SNAPSHOT/REALTIME)
+
+bithumb:
+  # Bithumb v2.1.5 WebSocket은 Upbit과 동일한 필드 사용
+  parameter:
+    - type              # 타입 (trade)
+    - code              # 마켓 코드 (KRW-BTC)
+    - trade_timestamp   # 체결 타임스탬프 (ms)
+    - trade_date        # 체결 일자 (KST)
+    - trade_time        # 체결 시각 (KST)
+    - trade_price       # 체결 가격
+    - trade_volume      # 체결량
+    - ask_bid           # 매수/매도 구분 (ASK/BID)
+    - prev_closing_price  # 전일 종가
+    - change            # 전일 대비 (RISE/EVEN/FALL)
+    - change_price      # 부호 없는 전일 대비 변화량
+    - sequential_id     # 체결 번호 (Unique)
+    - timestamp         # 타임스탬프
+    - stream_type       # 스트림 타입 (SNAPSHOT/REALTIME)
+
+coinone:
+  # Coinone은 data 객체 안에 필드가 있음
+  # 축약형(SHORT format)도 함께 표기
+  parameter:
+    - response_type     # (r) DATA로 고정
+    - channel           # (c) TRADE로 고정
+    - quote_currency    # (qc) 마켓 기준 통화 (KRW)
+    - target_currency   # (tc) 조회한 종목의 심볼 (BTC)
+    - id                # (i) 티커별 ID 값 (체결 ID)
+    - timestamp         # (t) 타임스탬프 (ms)
+    - price             # (p) 체결 가격
+    - qty               # (q) 체결 수량
+    - is_seller_maker   # (sm) 매도자가 maker인지 여부
+
+korbit:
+  # Korbit은 data 배열 안에 체결 정보가 있음
+  parameter:
+    - type              # 타입 (trade)
+    - timestamp         # 서버 시간 (Unix Timestamp ms)
+    - symbol            # 거래쌍 (btc_krw)
+    - snapshot          # 스냅샷 여부
+    # data[] 배열 내부 필드
+    - price             # 체결 가격
+    - qty               # 체결 수량
+    - isBuyerTaker      # 매수자가 테이커인지 여부
+    - tradeId           # 체결 ID
+
+# --- 글로벌 거래소 ---
+# 공식 문서: https://developers.binance.com/docs/binance-spot-api-docs/web-socket-streams
+binance:
+  # Stream Name: <symbol>@trade
+  # Update Speed: Real-time
+  parameter:
+    - e                 # Event type (trade)
+    - E                 # Event time
+    - s                 # Symbol
+    - t                 # Trade ID
+    - p                 # Price
+    - q                 # Quantity
+    - T                 # Trade time
+    - m                 # Is the buyer the market maker?
+    - M                 # Ignore
+
+# 공식 문서: https://bybit-exchange.github.io/docs/v5/websocket/public/trade
+bybit:
+  # Topic: publicTrade.{symbol}
+  # Response type: snapshot
+  parameter:
+    # Top-level fields
+    - topic             # Topic name (publicTrade.BTCUSDT)
+    - type              # Response type (snapshot)
+    - ts                # Timestamp (ms)
+    # Data array fields
+    - T                 # Trade timestamp (ms) when filled
+    - s                 # Symbol name
+    - S                 # Side of taker (Buy/Sell)
+    - v                 # Trade size
+    - p                 # Trade price
+    - L                 # Direction of price change (PlusTick/MinusTick/etc)
+    - i                 # Trade ID
+    - BT                # Whether it is a block trade
+    - seq               # Cross sequence
+
+# 공식 문서: https://www.okx.com/docs-v5/en/#order-book-trading-market-data-ws-trades-channel
+okx:
+  # Channel: trades
+  # Push Data fields
+  parameter:
+    - instId            # Instrument ID (BTC-USDT)
+    - tradeId           # Trade ID
+    - px                # Trade price
+    - sz                # Trade quantity
+    - side              # Trade side (buy/sell)
+    - ts                # Trade timestamp (ms)
+    - count             # Number of trades aggregated
+    - source            # Trade source
+    - seqId             # Sequence ID
+

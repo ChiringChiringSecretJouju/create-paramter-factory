@@ -45,7 +45,7 @@ def get_region_for_exchange(exchange_name: str) -> str:
     if exchange_name.lower() in ["upbit", "bithumb", "coinone", "korbit"]:
         return "korea"
     # 아시아 거래소
-    elif exchange_name.lower() in ["bybit", "gateio", "okx"]:
+    elif exchange_name.lower() in ["bybit", "okx"]:
         return "asia"
     # 글로벌 거래소
     elif exchange_name.lower() in ["binance", "kraken"]:
