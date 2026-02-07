@@ -50,7 +50,7 @@ class SocketParameterFactory:
             supported = ", ".join(cls._creators.keys())
             raise ValueError(
                 f"지원하지 않는 거래소: {exchange}. \n"
-                f"지원 거래소: {supported}"
+                f"지원 거래소: {supported}"  
             )
 
         creator_class = cls._creators[exchange]
