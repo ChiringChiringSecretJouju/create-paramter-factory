@@ -15,9 +15,16 @@ class KoreaRegionURLs(TypedDict):
     coinone: str
 
 
+class AsiaRegionURLs(TypedDict):
+    binance: str
+    bybit: str
+    okx: str
+
+
 # 전체 URL 구조 정의
 class AllMarketURLs(TypedDict):
     korea: KoreaRegionURLs
+    asia: AsiaRegionURLs
 
 
 @dataclass(frozen=True, slots=True)

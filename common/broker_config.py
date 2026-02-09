@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import configparser
 import logging
 import os
 from dataclasses import dataclass
@@ -20,37 +21,27 @@ class ProducerConfig:
         # .env 파일 직접 읽기
         env_vars = {}
         try:
-            with open(path, "r") as f:
+            with open(path, 'r') as f:
                 for line in f:
                     line = line.strip()
-                    if line and not line.startswith("#") and "=" in line:
-                        key, value = line.split("=", 1)
+                    if line and not line.startswith('#') and '=' in line:
+                        key, value = line.split('=', 1)
                         env_vars[key.strip()] = value.strip()
         except Exception:
             pass
-
+        
         # 환경변수 우선순위: 실제 환경변수 > .env 파일 > 기본값
-        bs = os.getenv("KAFKA_BOOTSTRAP_SERVERS") or env_vars.get(
-            "KAFKA_BOOTSTRAP_SERVERS", cls.bootstrap_servers
-        )
-        acks_raw = os.getenv("KAFKA_ACKS") or env_vars.get("KAFKA_ACKS", "1")
+        bs = os.getenv('KAFKA_BOOTSTRAP_SERVERS') or env_vars.get('KAFKA_BOOTSTRAP_SERVERS', cls.bootstrap_servers)
+        acks_raw = os.getenv('KAFKA_ACKS') or env_vars.get('KAFKA_ACKS', '1')
 
         try:
             acks: int | str = int(acks_raw)
         except (TypeError, ValueError):
             acks = acks_raw
 
-        linger_ms = int(
-            os.getenv("KAFKA_LINGER_MS") or env_vars.get("KAFKA_LINGER_MS", "0")
-        )
-        max_batch_size = int(
-            os.getenv("KAFKA_MAX_BATCH_SIZE")
-            or env_vars.get("KAFKA_MAX_BATCH_SIZE", "1048576")
-        )
-        max_request_size = int(
-            os.getenv("KAFKA_MAX_REQUEST_SIZE")
-            or env_vars.get("KAFKA_MAX_REQUEST_SIZE", "1048576")
-        )
+        linger_ms = int(os.getenv('KAFKA_LINGER_MS') or env_vars.get('KAFKA_LINGER_MS', '0'))
+        max_batch_size = int(os.getenv('KAFKA_MAX_BATCH_SIZE') or env_vars.get('KAFKA_MAX_BATCH_SIZE', '1048576'))
+        max_request_size = int(os.getenv('KAFKA_MAX_REQUEST_SIZE') or env_vars.get('KAFKA_MAX_REQUEST_SIZE', '1048576'))
 
         return cls(
             bootstrap_servers=bs,
@@ -71,11 +62,7 @@ def load_kafka_config() -> ProducerConfig:
         try:
             return ProducerConfig.from_env_file(conf_path)
         except Exception as e:
-            logger.warning(
-                "Kafka 설정 파일을 읽는 데 실패했습니다(%s). 기본값을 사용합니다.", e
-            )
+            logger.warning("Kafka 설정 파일을 읽는 데 실패했습니다(%s). 기본값을 사용합니다.", e)
 
-    logger.warning(
-        "Kafka 설정 파일을 찾지 못했습니다: %s. 기본값을 사용합니다.", conf_path
-    )
+    logger.warning("Kafka 설정 파일을 찾지 못했습니다: %s. 기본값을 사용합니다.", conf_path)
     return ProducerConfig()

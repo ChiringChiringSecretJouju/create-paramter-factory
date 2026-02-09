@@ -1,0 +1,27 @@
+# OKX v5 WebSocket API
+# Docs: https://www.okx.com/docs-v5/en/#overview-websocket
+# Format: {"op": "subscribe", "args": [{"channel": "trades", "instId": "BTC-USDT"}]}
+
+ticker:
+  op: "subscribe"
+  args: []  # 코드에서 동적 생성: [{"channel": "tickers", "instId": "BTC-USDT"}]
+
+trade:
+  op: "subscribe"
+  args: []  # 코드에서 동적 생성: [{"channel": "trades", "instId": "BTC-USDT"}]
+
+orderbook:
+  op: "subscribe"
+  args: []  # 코드에서 동적 생성: [{"channel": "books", "instId": "BTC-USDT"}]
+
+unsubscribe_ticker:
+  op: "unsubscribe"
+  args: []
+
+unsubscribe_trade:
+  op: "unsubscribe"
+  args: []
+
+unsubscribe_orderbook:
+  op: "unsubscribe"
+  args: []

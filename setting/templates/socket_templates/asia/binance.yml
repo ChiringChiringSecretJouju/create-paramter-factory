@@ -1,0 +1,33 @@
+# Binance Spot WebSocket API
+# Docs: https://developers.binance.com/docs/binance-spot-api-docs/web-socket-streams
+# Format: {"method": "SUBSCRIBE", "params": ["btcusdt@trade"], "id": 1}
+
+ticker:
+  method: "SUBSCRIBE"
+  params: []  # 코드에서 동적 생성: ["btcusdt@ticker"]
+  id: "{req_id}"
+
+trade:
+  method: "SUBSCRIBE"
+  params: []  # 코드에서 동적 생성: ["btcusdt@trade"]
+  id: "{req_id}"
+
+orderbook:
+  method: "SUBSCRIBE"
+  params: []  # 코드에서 동적 생성: ["btcusdt@depth20"]
+  id: "{req_id}"
+
+unsubscribe_ticker:
+  method: "UNSUBSCRIBE"
+  params: []
+  id: "{req_id}"
+
+unsubscribe_trade:
+  method: "UNSUBSCRIBE"
+  params: []
+  id: "{req_id}"
+
+unsubscribe_orderbook:
+  method: "UNSUBSCRIBE"
+  params: []
+  id: "{req_id}"
